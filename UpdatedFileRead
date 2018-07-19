@@ -1,0 +1,84 @@
+import csv, time
+with open('/Users/nikita.zabolotniy/Desktop/FileToReadFrom.txt', 'r') as csvfile1: #csvfile is a file(-like) object
+    spamLines = csvfile1.readlines() #return a list containing the lines (strings) read
+    #for i in spamLines:
+        #print i
+    with open('/Users/nikita.zabolotniy/Desktop/FileToWriteTo.txt', 'w') as csvfile2:
+        #argument must be a sequence of strings or numbers for Writer objects
+        for line in spamLines:
+            #line1 = line.translate(None," ")
+            #line +="\n"
+            csvfile2.write(line)
+            #prints each line on the new line because lines in readlines contain \n, 
+            #so they know where a line ends
+            time.sleep(0.2)
+            #readlines1 = csvfile2.readlines()
+            #for line in
+        
+    ====================================================  
+    
+    """spamwriter = csv.writer(csvfile2,skipinitialspace=True, delimiter=' ')# quoting=csv.QUOTE_MINIMAL) quotechar='|'
+    spamwriter.writerow(['Spam'*3] + ['Lovely Spam', 'Wonderful Spam']) 
+    #have quotechar here as well but aroung the words, because there is a white space in two of the components
+    
+    fieldnames = ['first_name', 'last_name']
+    writer = csv.DictWriter(csvfile,fieldnames=fieldnames) #writer is a writer object
+
+    writer.writeheader()
+    writer.writerow({'first_name': 'Baked', 'last_name': 'Beans'})
+    writer.writerow({'first_name': 'Lovely', 'last_name': 'Spam'})
+    writer.writerow({'first_name': 'Wonderful', 'last_name': 'Spam'})
+    csvfile.write("writing into the file, quotechar not used because this isnt done through a writer object\n") 
+    #have to use write with the file object and NOT write object
+
+with open('/Users/nikita.zabolotniy/Desktop/FileToWrite.txt', 'a') as csvfile:
+    for i in range(10):
+        csvfile.write("This is line %d\n" % (i+1))
+    csvfile.write("extra Line 1")
+    csvfile.write("extra Line 2")
+    csvfile.write("extra Line 3")
+    csvfile.write("extra Line 4")
+    csvfile.write("extra Line 5") #these are not written to a new line each, but in a row
+    csvfile.writelines(["1arg","2arg","3arg","4arg","5arg","6arg"])
+    #does not add line separators as well and writes those line without a whitespace or comma, 
+    #but one right after the other"""
+    
+    
+    ================================================
+    
+    
+    import time, csv
+def tail(fileobj): #define the function for a file object
+        fileobj.seek(0,0) 
+        count = 0
+        while not fileobj.closed:
+            
+            line = fileobj.readline()# this will pas a line to a generator
+            if count <=100:
+                if not line:
+                    time.sleep(0.1)
+                    count+=1
+                    continue
+                #StateOfFile = csvfile3.read()
+                yield line
+            else: 
+                break
+            
+if __name__ == "__main__":
+    with open('/Users/nikita.zabolotniy/Desktop/FileToWriteTo.txt', 'r') as csvfile3:
+        #spamwreader = csv.reader(csvfile3, delimiter=' ', quotechar='|', quoting=csv.QUOTE_MINIMAL)#write object
+        generator1 = tail(csvfile3)
+        for line in generator1:
+            print line
+            if not csvfile3.closed:
+                print "running"
+            else: 
+                print "closed" 
+                
+    if not csvfile3.closed:
+        print "running"
+    else: 
+        print "closed"
+    #csvfile3.close()
+    #print "done"
+        
