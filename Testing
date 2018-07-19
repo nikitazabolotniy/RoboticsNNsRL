@@ -1,0 +1,70 @@
+import numpy
+import csv
+import matplotlib.pyplot
+arg1 = []
+arg2 = []
+arg3 = []
+arg2int = []
+arg1int = []
+arg3int = []
+first_row = []
+userinput = []
+#plotagainst = ""
+#firstvar = ""
+#secondvar = ""
+with open("/Users/nikita.zabolotniy/Desktop/wedge15Ma5_report.csv","r") as csvfile:
+    csvreader = csv.reader(csvfile,skipinitialspace=True,delimiter=" ")#quotechar = "0",doublequote = True, quoting=csv.QUOTE_MINIMAL)
+    #lines in csvreader are represented as lists with strings, they are components of the csvreader
+    for row in csvreader:
+        first_row = row
+        break
+    print first_row #prints the value for different variables
+    
+    numofvar = int(raw_input("how many variable would you like to plot?"))
+    #count = 0
+    plotagainst = ""
+    firstvar = ""
+    secondvar = ""
+    for i in range(numofvar+1):
+        if i == 0:
+            plotagainst = raw_input("what variable would you like to plot against?")
+        elif i == 1:
+            firstvar = raw_input("enter the name of teh first variable")
+        elif i == 2:
+            secondvar = raw_input("enter the name if the second variable")
+        elif i == 3:
+            pass
+        elif i == 4:
+            pass
+    plotagainstInd = first_row.index(plotagainst) #we now know the index if the desired value in the first_row
+    firstvarInd = first_row.index(firstvar)
+    secondvarInd = first_row.index(secondvar)
+    
+    for row in csvreader:
+        row.remove("")#if set variable to this command it will return empty strings. if set row = row.remove(""), then will return None
+        #perhaps because row and row.remove("") are different objects
+        arg1.append(row[plotagainstInd])  # extracts the first component of each row represented as a list
+        arg2.append(row[firstvarInd])
+        arg3.append(row[secondvarInd])
+    arg1 = arg1[1:]
+    arg2 = arg2[1:]
+    arg3 = arg3[1:]
+    for i in range(0,len(arg2)):
+        arg3int.append(int(float(arg3[i])))
+        arg2int.append(int(float(arg2[i])))
+        arg1int.append(int(float(arg1[i])))
+    #print arg3int
+    #print arg2int
+    #print arg1int
+    #for tuple in zip(arg1,arg2):# extracts the first component of each row represented as a list
+        #print tuple
+            
+plotted1 = matplotlib.pyplot.plot(arg1int,arg2int,arg1int,arg3int,label="RhoE",label=firstvar)
+#plotted2 = matplotlib.pyplot.plot(arg1int,arg3int,label="RhoE")#by def seq of y vals; x def [0,1,2,3]
+#matplotlib.pyplot.axis([0, 1100, 0, 190])
+matplotlib.pyplot.ylabel(firstvar) 
+matplotlib.pyplot.xlabel(plotagainstInd)
+#matplotlib.pyplot.xticks(range(0,1100,90))
+    #arg1int50 = arg1int[:20]
+matplotlib.pyplot.legend()
+matplotlib.pyplot.show()
