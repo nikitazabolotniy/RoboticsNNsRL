@@ -1,0 +1,143 @@
+import time, csv, numpy, re, matplotlib.pyplot as pl 
+ListOfTimes = []
+userinput = []
+first_row = []
+arg3int = []
+arg2int = []
+arg1int = []
+arg1 = []
+arg2 = []
+arg3 = [] 
+Values20Plus = [] #this is a list but need to make it into a generator for dynamic processing
+firstvar = ""
+secondvar = ""
+thirdvar = ""
+fourthvar = ""
+plotagainst = ""
+"""this code doesnt work if i run it first to read a file and then try to write smt to that file, 
+because the program pointer is at the end; can be augmented of course"""
+def LastLines(list,n, m = None):
+    ListLast = list[-n:m]
+    return ListLast
+
+def CompareGrad(list,n):
+    Half1 = LastLines(LastLines(list,n),0,int(math.floor(n/2))) #first n/2 elements
+    Half2 = LastLines(LastLines(list,n),int(math.floor(-n/2)))
+    mean1 = np.mean(Half1)
+    mean2 = np.mean(Half2)
+    print mean1, mean2
+    return abs(mean1 - mean2)
+
+def tail(fileobj,csvreaderArg): #defines a generator function for a file object and reader object
+    fileobj.seek(0,0) 
+    StartTime = time.time()
+    count = 0
+    while not fileobj.closed:
+        #line = iterator1.next()
+        #line = csvreaderArg.next()# this will pas a line to a generator
+        line = fileobj.readline()
+        if not line:
+            time.sleep(0.03)
+            TimeToBreak2 = time.time()
+            if TimeToBreak2 - TimeToBreak1 < 3: 
+                #this keeps track of how long a document hasnt been updated 
+                # i.e. how long a line hasnt been added
+                continue
+            elif 3 <= TimeToBreak2 - TimeToBreak1<=6: #if wait for 3-6 sec more than 10 times - break
+                count+=1
+                if count<10:
+                    continue
+                else:
+                    break
+            else: #if wait more than 6 sec break because prob run out of lines in a file
+                break
+        else:
+            TimePassed = time.time()
+            TimeStep = abs(StartTime - TimePassed)
+            #this tracks how long it takes to read another line
+            ListOfTimes.append(TimeStep)
+            yield line
+            TimeToBreak1 = StartTime = time.time()
+        AverageTime = numpy.mean(ListOfTimes)
+        if AverageTime *10000 > 43200: # 12*60*60 seconds in 12 hrs; 10k cycles; crude calculation
+            break 
+        if numpy.mean(LastLines(ListOfTimes,20)) > 2:
+            break # break if the last 20 time intervals are longer than 2 sec
+            
+def ProcessingForPairs(generator, n = 1, m = 3): # generates lists of strings containing fields
+    # extracts dy default 1st and 3rd components: Cycle and rhoV[0]
+    for line in generator:
+        line1 = re.sub(r' ', ",", line)
+        line2 = re.sub(r',,', "", line1)
+        LineList = line2.split(",")
+        args1 = LineList[n]
+        args2 = LineList[m]
+        try: #want to handle the first row where there are no numerical values
+            args1int = int(float(args1))
+            args2int = int(float(args2))
+            yield args1int, args2int
+        except ValueError:
+            #print args2int
+            continue
+        #these are integer values for cycle and some argument
+        #returned one pair at a time
+               
+def ProcessingPairs(generator,n = 20): #will consider gradient when have at leat n data points
+    for a,b in generator:
+        Values20Plus.append(b)
+        if len(Values20Plus) < n:
+            continue
+        else:
+            Gradient = numpy.gradient(Values20Plus) 
+            #computes a list of gradients which gets larger every time we iterate the loop
+            #so want to extract the last 20 elements from this list
+            DistOfMeans = CompareGrad(Gradient,n)
+            if DistOfMeans <=0.05: #this is deliberately too small s.t. it doesnt terminate
+                print "can terminate"
+                break
+            else:
+                print "keep computing"
+                print DistOfMeans
+                
+if __name__ == "__main__":
+    with open('/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt', 'r') as csvfile3:
+        csvfile3.seek(0,0) 
+        csvreader = csv.reader(csvfile3, skipinitialspace=True,delimiter=" ") #reader object
+        # to represent lines as lists of fields
+        GeneratorTail = tail(csvfile3,csvreader) #generator returns strings
+        for row in csvreader:
+            first_row = row
+            break
+        print first_row 
+        # i use file object methods here to process lines rather than reader object methods
+        #but theyre equivalent for simple things as i understand 
+        GeneratorPairs = ProcessingForPairs(GeneratorTail)
+        #for line in GeneratorTail: 
+        #doesnt print whats below if we iterate through GeneratorTail, because when we declare GeneratorPairs
+        #it doesnt start iterating over GeneratorTail immediately but waits for some command, which is
+        #the print statement below for example
+            #print line
+        print "================================="  
+        #for a,b in GeneratorPairs:
+            #print b
+        ProcessingPairs(GeneratorPairs)
+        print "================================="  
+        maximum1 = max(ListOfTimes)
+        """for some reason the greatest value for time interval is for the last line"""
+        ListOfTimes.pop(len(ListOfTimes)-1)
+        maximum2 = max(ListOfTimes)
+        print ListOfTimes
+        print maximum1, maximum2
+        
+        #TBD modify list such that it takes the max of all elements except the last one
+             
+            
+        for a,b in generator2: #can only iterate once; if the generator is terminated, 
+            #this loop is not executed, otherwise it seems to be in an idle state
+            print b
+        #print "after second for"
+        
+       
+        
+           
+    
