@@ -97,7 +97,7 @@ def ProcessingPairs(generator,n = 20): #will consider gradient when have at leat
                 break
             else:
                 print "keep computing"
-                print DistOfMeans
+                yield DistOfMeans
                 
 if __name__ == "__main__":
     with open('/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt', 'r') as csvfile3:
@@ -120,7 +120,9 @@ if __name__ == "__main__":
         print "================================="  
         #for a,b in GeneratorPairs:
             #print b
-        ProcessingPairs(GeneratorPairs)
+        GetGradDistOfMeans = ProcessingPairs(GeneratorPairs)
+        for i in GetGradDistOfMeans:
+            print i
         print "================================="  
         maximum1 = max(ListOfTimes)
         """for some reason the greatest value for time interval is for the last line"""
