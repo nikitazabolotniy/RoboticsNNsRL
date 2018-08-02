@@ -24,7 +24,6 @@ class CsvParsing(object):
         TimeToBreak1 = StartTime = time.time()
         count = 0
         while not self.fileobj.closed:
-            #print "111111111111111111"
             line = self.fileobj.readline()
             if not line:
                 time.sleep(0.03)
