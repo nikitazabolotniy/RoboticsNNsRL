@@ -10,11 +10,6 @@ arg1 = []
 arg2 = []
 arg3 = [] 
 #Values20Plus = [] #need to declare cuz otherwise gets arbitrarily large due to generator
-firstvar  = ""
-secondvar = ""
-thirdvar  = ""
-fourthvar = ""
-plotagainst = ""
 
 class CsvParsing(object):
     
