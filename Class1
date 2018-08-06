@@ -1,14 +1,14 @@
-import numpy as np, matplotlib.pyplot as plt, time, re
+import numpy as np, matplotlib.pyplot as plt, time, re, math
 
+ListDesiredArgs = []
+GlobalSwitch    = True
 ListOfTimes = []
 userinput   = []
 first_row   = []
-arg3int = []
 arg2int = []
 arg1int = []
-arg1 = []
-arg2 = []
-arg3 = [] 
+arg0int = [] 
+args = []
 #Values20Plus = [] #need to declare cuz otherwise gets arbitrarily large due to generator
 
 class CsvParsing(object):
@@ -33,11 +33,11 @@ class CsvParsing(object):
                     # i.e. how long a line hasnt been added
                     #print "TIME <2"
                     continue
-                elif 2 <= TimeToBreak2 - TimeToBreak1<=5: #if wait for 2-5 sec more than 20 times - break
+                elif 2 <= TimeToBreak2 - TimeToBreak1 <= 5: #if wait for 2-5 sec more than 20 times - break
                     #print "2< TIME <5"
                     time.sleep(0.2)
-                    count+=1
-                    if count<20:
+                    count += 1
+                    if count < 20:
                         continue
                     else:
                         break
@@ -52,7 +52,7 @@ class CsvParsing(object):
                 TimeToBreak1 = StartTime = time.time()
 
             AverageTime = np.mean(ListOfTimes)#MODIFY ST COMPUTES LAST ENTRIES or some subset 
-            if AverageTime *10000 > 43200: # 12*60*60 seconds in 12 hrs; 10k cycles; crude calculation
+            if AverageTime * 10000 > 43200: # 12*60*60 seconds in 12 hrs; 10k cycles; crude calculation
                 break 
             if np.mean(self.LinesInterval(ListOfTimes,20)) > 2:
                 break # break if the last 20 time intervals are longer than 2 sec
@@ -68,7 +68,6 @@ class CsvParsing(object):
         IndexList = [] # list of indices (natural #) to extract arguments that are in ListOfVars
         switch    = False
         for line in generator:
-            #print line
             count1+=1
             lineSub  = re.sub(r' ', ",", line)
             #Returns the string obtained by replacing the leftmost non-overlapping occurrences of pattern by repl
@@ -89,11 +88,16 @@ class CsvParsing(object):
                 try:
                     DesiredArgs[i] = int(float(DesiredArgs[i]))
                     switch = True
-                    #print DesiredArgs
                 except ValueError:
                     switch = False
                     continue
             DesiredArgs = tuple(DesiredArgs) #tuple of strings
+            if GlobalSwitch and switch == True:
+                ListDesiredArgs.append(DesiredArgs) #list of tuples of desired args for plotting
+            else: #nothing will call next() from ProcessingPairs so it's not necessary to include
+                #this condition. Even though it wont be called from ProcessingPairs
+                # this generator will still yield values because this is tied to the tail generator
+                print "SWITCHED"
             if switch == True:
                 yield DesiredArgs #the desired tuple including the one to print against
                 
@@ -103,18 +107,28 @@ class CsvParsing(object):
         #MODIFY TO TAKE A LIST OF ARGS AS INPUT TO PROCESS
         #print "In ProcessingPairs"
         Values20Plus = []
+        #Step20Plus   = [] #steps for computing the gradient
         count2       = 0
-        for seq in generator: #in ExtractArgs
-            count2 +=1
+        for a_tuple in generator: #in ExtractArgs
+            #count2 +=1
 
             if len(Values20Plus) > 150:
                 #these are all the same length and we dont want them to get too big, cuz these are lists
                 Values20Plus = []
                 Gradient     = []
 
-            Values20Plus.append(seq[argnum]) # this list grows larger and larger every time prog is run
+            Values20Plus.append(a_tuple[argnum]) # this list grows larger and larger every time prog is run
             #if we do not declare it as an empty list at the beginning
             #because gen keep on adding to it even after break command and on then next run of code
+            """if count2 >= 2:
+                seq2 = seq[0]
+                step = seq2-seq1
+                Step20Plus.append(step)
+                seq1 = seq[0]
+            else:
+                seq1 = seq[0]
+                step = seq1
+                Step20Plus.append(step)"""
 
             if len(Values20Plus) < n:
                 continue
@@ -122,15 +136,17 @@ class CsvParsing(object):
                 Gradient = np.gradient(Values20Plus, 10) 
                 #computes a list of gradients which gets larger every time we iterate the loop
                 #so want to extract the last 20 elements from this list
-                print Gradient
+                print Gradient, len(Gradient)
                 Means = self.ComputeMeanGrad(self.LastLineSplit(Gradient,n))
                 if Means[0] < 2 and Means[1] < 2:
-                    print "can consider termination"
+                    print "can consider termination", Means
                     DistOfMeans = self.CompareMeanGrad(Gradient,n)
-                    if DistOfMeans <= 0.06: # was 0.05 for non abs grad
+                    if DistOfMeans <= 0.25: # was 0.05 for non abs grad
                         #this is deliberately too small s.t. it doesnt terminate
                         print "can terminate"
                         print DistOfMeans, "DistOfMeans"
+                        global GlobalSwitch
+                        GlobalSwitch = False # stop adding values to argints
                         break
                     else:
                         #print "keep computing"
@@ -182,8 +198,8 @@ class CsvParsing(object):
         mean1 = np.mean(Half1)
         mean2 = np.mean(Half2)
         return abs(mean1 - mean2)
+            
     
-   
     def OpenFile(self):
         with open(self.filename, 'r') as fileobj:
             self.fileobj   = fileobj
@@ -193,14 +209,27 @@ class CsvParsing(object):
             for i in GetDistOfMeans:
                 print i 
                 
-            """maximum1 = max(ListOfTimes)
+            maximum1 = max(ListOfTimes)
             #for some reason the greatest value for time interval is for the last line
-            ListOfTimes.pop(len(ListOfTimes)-1)
+            #ListOfTimes.pop(len(ListOfTimes)-1)
             maximum2 = max(ListOfTimes)
             print ListOfTimes
-            print maximum1, maximum2"""
+            print maximum1, maximum2
+            
+    def Plot(self, ListOfTuples): #will act on a list of tuples of arguments
+        ListOfVars = self.ListOfVars
+        UnzipList = zip(*ListOfTuples) #tuples of values for args
+        for i in range(len(UnzipList) - 1):
+            plt.plot(UnzipList[0], UnzipList[i+1], label = ListOfVars[i+1])
+        plt.ylabel(ListOfVars[1]) 
+        plt.xlabel(ListOfVars[0])
+        plt.legend()
+        plt.show()
+        
             
 x = CsvParsing(["Cycle","rhoV[0]","rhoV[1]"],'/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt')
 x.OpenFile()
+x.Plot(ListDesiredArgs)
+
 
 
