@@ -245,4 +245,10 @@ y.Plot(ListDesiredArgs)
 
 print y.filename, x.fileobj
 
+DirectoryList = os.listdir("/Users/nikita.zabolotniy/Desktop/Directory")
+for i in DirectoryList:
+    x = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],"/Users/nikita.zabolotniy/Desktop/Directory/"+i)
+    x.OpenFile()
+    x.Plot(ListDesiredArgs)
+
 
