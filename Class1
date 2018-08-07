@@ -226,10 +226,16 @@ class CsvParsing(object):
         plt.legend()
         plt.show()
         
+        covar = np.corrcoef([UnzipList[1], UnzipList[2]])
+        print covar
+        
             
-x = CsvParsing(["Cycle","rhoV[0]","rhoV[1]"],'/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt')
+x = CsvParsing(["Cycle","rho", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt')
+y = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/CSV1.txt')
 x.OpenFile()
 x.Plot(ListDesiredArgs)
+y.OpenFile()
+y.Plot(ListDesiredArgs)
 
 
 
