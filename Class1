@@ -60,6 +60,8 @@ class CsvParsing(object):
         
     def ExtractArgs(self, generator): 
         ListOfVars = self.ListOfVars
+        global GlobalSwitch
+        GlobalSwitch = True # need to make true for repeated application of the code
         #print "In ExtractArgs"
         # the FIRST argument in ListOfVars should be the one to plot against
         #this generator will return a tuple of indep and dep vars
@@ -229,13 +231,18 @@ class CsvParsing(object):
         covar = np.corrcoef([UnzipList[1], UnzipList[2]])
         print covar
         
+        global ListDesiredArgs #empty ListDesiredArgs to be filled for future plotting
+        ListDesiredArgs = []
+        
             
 x = CsvParsing(["Cycle","rho", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt')
 y = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/CSV1.txt')
 x.OpenFile()
 x.Plot(ListDesiredArgs)
+
 y.OpenFile()
 y.Plot(ListDesiredArgs)
 
+print y.filename, x.fileobj
 
 
