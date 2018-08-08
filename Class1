@@ -9,7 +9,6 @@ arg2int = []
 arg1int = []
 arg0int = [] 
 args = []
-#Values20Plus = [] #need to declare cuz otherwise gets arbitrarily large due to generator
 
 class CsvParsing(object):
     
@@ -18,7 +17,7 @@ class CsvParsing(object):
         self.filename   = filename
         
         
-    def tail(self):#defines a generator function for a file object and reader object
+    def tail(self):
         #print "In tail"
         self.fileobj.seek(0,0) 
         TimeToBreak1 = StartTime = time.time()
@@ -59,17 +58,13 @@ class CsvParsing(object):
         
         
     def ExtractArgs(self, generator): 
-        ListOfVars = self.ListOfVars
         global GlobalSwitch
-        GlobalSwitch = True # need to make true for repeated application of the code
-        #print "In ExtractArgs"
-        # the FIRST argument in ListOfVars should be the one to plot against
-        #this generator will return a tuple of indep and dep vars
-        # generator arg should be tail or something that continiously yields lines
-        count1    = 0 #probably can set count because the first scope to search would be local within generator
-        IndexList = [] # list of indices (natural #) to extract arguments that are in ListOfVars
-        switch_1    = False
-        switch_2    = True
+        ListOfVars   = self.ListOfVars
+        GlobalSwitch = True 
+        count1       = 0 
+        IndexList    = [] # list of indices (natural #) to extract arguments that are in ListOfVars
+        switch_1     = False
+        switch_2     = True
         for line in generator:
             lineSub  = re.sub(r' ', ",", line)
             #Returns the string obtained by replacing the leftmost non-overlapping occurrences of pattern by repl
@@ -79,7 +74,7 @@ class CsvParsing(object):
                 LineList[LineList.index(field)] = field.replace(" ","") #strip fields of whitespaces
             if switch_2 == True:
                 for field in ListOfVars:
-                    index = LineList.index(field)
+                    index    = LineList.index(field)
                     IndexList.append(index)
                     switch_2 = False
                     #gets indices for desired variables in LineList and puts them into IndexList
@@ -97,9 +92,7 @@ class CsvParsing(object):
             DesiredArgs = tuple(DesiredArgs) #tuple of strings
             if GlobalSwitch and switch_1 == True:
                 ListDesiredArgs.append(DesiredArgs) #list of tuples of desired args for plotting
-            else: #nothing will call next() from ProcessingPairs so it's not necessary to include
-                #this condition. Even though it wont be called from ProcessingPairs
-                # this generator will still yield values because this is tied to the tail generator
+            else: 
                 print "SWITCHED"
             if switch_1 == True:
                 yield DesiredArgs #the desired tuple including the one to print against
@@ -109,22 +102,19 @@ class CsvParsing(object):
         #argnum is the order of the argument in a tuple for which we want to compute the gradient, st from 0
         #MODIFY TO TAKE A LIST OF ARGS AS INPUT TO PROCESS
         #print "In ProcessingPairs"
-        Values20Plus = []
         global TimeStep
-        TimeStep = 0 #steps for computing derivatives
-        count2   = 0
+        Values20Plus = []
+        TimeStep     = 0 #steps for computing derivatives
+        count2       = 0
         #Step20Plus   = [] #steps for computing the gradient
         for a_tuple in generator: #in ExtractArgs
             count2 +=1
-
             if len(Values20Plus) > 150:
                 #these are all the same length and we dont want them to get too big, cuz these are lists
                 Values20Plus = []
                 Gradient     = []
 
-            Values20Plus.append(a_tuple[argnum]) # this list grows larger and larger every time prog is run
-            #if we do not declare it as an empty list at the beginning
-            #because gen keep on adding to it even after break command and on then next run of code
+            Values20Plus.append(a_tuple[argnum])
             if count2 == 1:
                 FirstVal  = 0
                 SecondVal = 0
@@ -133,17 +123,6 @@ class CsvParsing(object):
             if count2 == 3:
                 SecondVal = a_tuple[0]
                 TimeStep  = SecondVal - FirstVal
-                
-                
-            """if count2 >= 2:
-                seq2 = seq[0]
-                step = seq2-seq1
-                Step20Plus.append(step)
-                seq1 = seq[0]
-            else:
-                seq1 = seq[0]
-                step = seq1
-                Step20Plus.append(step)"""
 
             if len(Values20Plus) < n:
                 continue
@@ -151,7 +130,7 @@ class CsvParsing(object):
                 Gradient = np.gradient(Values20Plus, TimeStep) 
                 #computes a list of gradients which gets larger every time we iterate the loop
                 #so want to extract the last 20 elements from this list
-                print Gradient, len(Gradient)
+                print Gradient, "Gradient", len(Gradient)
                 Means = self.ComputeMeanGrad(self.LastLineSplit(Gradient,n))
                 if Means[0] < 2 and Means[1] < 2:
                     print "can consider termination", Means
@@ -231,12 +210,13 @@ class CsvParsing(object):
             print ListOfTimes
             print maximum1, maximum2
             
+            
     def Plot(self, ListOfTuples): #will act on a list of tuples of arguments
         ListOfVars = self.ListOfVars
-        UnzipList = zip(*ListOfTuples) #tuples of values for args
+        UnzipList  = zip(*ListOfTuples) #tuples of values for args
         for i in range(len(UnzipList) - 1):
             plt.plot(UnzipList[0], UnzipList[i+1], label = ListOfVars[i+1])
-        plt.ylabel(ListOfVars[1]) 
+        plt.ylabel("Value") 
         plt.xlabel(ListOfVars[0])
         plt.legend()
         plt.show()
@@ -247,28 +227,35 @@ class CsvParsing(object):
         global ListDesiredArgs #empty ListDesiredArgs to be filled for future plotting
         ListDesiredArgs = []
         
+        
+    def FileNamesGen(self, dirname):
+        time1 = time.time()
+        for dirpath, subdirs, filenames in os.walk(dirname): #os.walk is a generator
+            if filenames != []:
+                for name in filenames:
+                    if ".txt" in name or ".csv" in name:
+                        yield os.path.join(dirpath,name)
+            else:
+                print "no files in a directory"
+                time2 = time.time()
+                if time2 - time1 < 5:
+                    continue
+                else:
+                    break
             
-x = CsvParsing(["Cycle","rho", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/ai4cfd_N0012_AoA0p0_Mach0p01_Re1000000p0_0_report.restart.csv')
-y = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/CSV1.txt')
-#x.OpenFile()
-#x.Plot(ListDesiredArgs)
+            
+y = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],'/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt')
+#need this one to call a function
 
-#y.OpenFile()
-#y.Plot(ListDesiredArgs)
+path = "/Users/nikita.zabolotniy/Desktop/Directory_2" 
 
-#print y.filename, x.fileobj
-DirectoryList = os.listdir("/Users/nikita.zabolotniy/Desktop/Directory")
-for i in DirectoryList:
-    if ".txt" in i:
-        x = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],"/Users/nikita.zabolotniy/Desktop/Directory/" + i)
-        x.OpenFile()
-        x.Plot(ListDesiredArgs)
-    elif ".csv" in i:
-        x = CsvParsing(["Cycle","rhoV[1]", "rhoV[0]"],"/Users/nikita.zabolotniy/Desktop/Directory/" + i)
-        x.OpenFile()
-        x.Plot(ListDesiredArgs) 
-    else:
-        pass
+GenFilenames = y.FileNamesGen(path)     
+
+for filename in GenFilenames:
+    x = CsvParsing(["Cycle","rhoE", "rhoV[0]"], filename)
+    x.OpenFile()
+    x.Plot(ListDesiredArgs)
+    
 
 
 
