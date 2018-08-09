@@ -130,13 +130,16 @@ class CsvParsing(object):
             else:
                 Gradient = np.gradient(Values20Plus, TimeStep) 
                 #computes a list of gradients which gets larger every time we iterate the loop
-                #so want to extract the last 20 elements from this list
+                #so want to extract the last n elements from this list
                 print Gradient, "Gradient", len(Gradient)
                 Means = self.ComputeMeanGrad(self.LastLineSplit(Gradient,n))
+                #splits the last n elements of gradient into tow unequal parts, tail is shorter
                 if Means[0] < 2 and Means[1] < 2:
                     print "can consider termination", Means
                     DistOfMeans = self.CompareMeanGrad(Gradient,n)
-                    if DistOfMeans <= 0.25: # was 0.05 for non abs grad
+                    GradRatio , means  = self.CompareGradRatio(Gradient,n)
+                    print GradRatio, "GradRatio", means, "means"
+                    if DistOfMeans <= 0.1: # was 0.05 for non abs grad
                         #this is deliberately too small s.t. it doesnt terminate
                         print "can terminate"
                         print DistOfMeans, "DistOfMeans"
@@ -193,6 +196,22 @@ class CsvParsing(object):
         mean1 = np.mean(Half1)
         mean2 = np.mean(Half2)
         return abs(mean1 - mean2)
+    
+    def CompareGradRatio(self, list1, n):
+        #this doesnt seem to be a good predictor because the range of values it takes is too wide with
+        #the current algorithm. Moreover, it may not be relible for large values of gradient 
+        #because its a ratio; even tho we consider last values, sudden jumps may trick it
+        #strangely enough, its value before termination it quite small most of the times 
+        #acts on Gradient, splits in half
+        Half1 = self.LinesInterval(self.LinesInterval(list1, n), 0, int(math.floor(n/2))) #first n/2 elements
+        Half2 = self.LinesInterval(self.LinesInterval(list1, n), int(math.floor(-n/2)))
+        for i in range(len(Half1)):
+            Half1[i] = abs(Half1[i])
+        for i in range(len(Half2)):
+            Half2[i] = abs(Half2[i])
+        mean1 = np.mean(Half1)
+        mean2 = np.mean(Half2)
+        return mean2/mean1, (mean2, mean1)
             
     
     def OpenFile(self):
@@ -202,7 +221,7 @@ class CsvParsing(object):
             ExtractedArgs  = self.ExtractArgs(GeneratorTail)
             GetDistOfMeans = self.ProcessingPairs(ExtractedArgs)
             for i in GetDistOfMeans:
-                print i
+                print i, "GetDistOfMeans"
                 
             maximum1 = max(ListOfTimes)
             print maximum1, "maximum time"
@@ -271,7 +290,9 @@ path = "/Users/nikita.zabolotniy/Desktop/Directory_2"
 GenFilenames = DummyInstance.FileNamesGen(path)     
 
 for filename in GenFilenames:
-    RandomField, ListOfFields = DummyInstance.OpenFileForVars(filename)
+    RandomField, ListOfFields = DummyInstance.OpenFileForVars(filename) #open file to get variable names
+    #for gradient computation for all variables along with one randomly selected extra variable to plot
+    #then will again open the same file for processing
     for i in ListOfFields:
         x = CsvParsing(["Cycle", i, RandomField], filename)
         x.OpenFile()
