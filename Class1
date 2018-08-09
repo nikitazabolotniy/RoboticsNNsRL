@@ -1,8 +1,7 @@
-import numpy as np, matplotlib.pyplot as plt, time, re, math, os
+import numpy as np, matplotlib.pyplot as plt, time, re, math, os, random
 
 GlobalSwitch    = True
 ListDesiredArgs = []
-ListOfFields    = []
 ListOfTimes = []
 userinput   = []
 first_row   = []
@@ -62,7 +61,6 @@ class CsvParsing(object):
         
     def ExtractArgs(self, generator): 
         global GlobalSwitch
-        global ListOfFields
         ListOfVars   = self.ListOfVars #list of variables to plot, and the first one is to plot against
         GlobalSwitch = True 
         count1       = 0 
@@ -76,17 +74,11 @@ class CsvParsing(object):
             #fields as members
             for field in LineList:
                 LineList[LineList.index(field)] = field.replace(" ","") #strip fields of whitespaces
-                #if switch_2 == True:
-                    #print LineList
             if switch_2 == True:
                 for field in ListOfVars: #this determines the length of IndexList and hence DesiredArgs
                     index    = LineList.index(field)
                     IndexList.append(index)
                     #gets indices for desired variables in LineList and puts them into IndexList
-                    ListOfFields = list(LineList) #creates a copy of LineList, for testing
-                    for field in LineList:
-                        if field == "":
-                            ListOfFields.remove("")
                     switch_2 = False
             DesiredArgs = [] #set to empty to fill with current set of data points as strings
             for index in IndexList:
@@ -210,19 +202,16 @@ class CsvParsing(object):
             ExtractedArgs  = self.ExtractArgs(GeneratorTail)
             GetDistOfMeans = self.ProcessingPairs(ExtractedArgs)
             for i in GetDistOfMeans:
-                print i 
+                print i
                 
             maximum1 = max(ListOfTimes)
-            #for some reason the greatest value for time interval is for the last line
-            #ListOfTimes.pop(len(ListOfTimes)-1)
-            maximum2 = max(ListOfTimes)
-            print ListOfTimes
-            print maximum1, maximum2
+            print maximum1, "maximum time"
             
             
     def Plot(self, ListOfTuples): #will act on a list of tuples of arguments
         ListOfVars = self.ListOfVars
         UnzipList  = zip(*ListOfTuples) #long tuples of values for args
+        plt.figure(2, figsize=(6, 4), dpi=140, facecolor='w', edgecolor='k')
         for i in range(len(UnzipList) - 1):
             plt.plot(UnzipList[0], UnzipList[i+1], label = ListOfVars[i+1])
         plt.ylabel("Value") 
@@ -237,7 +226,7 @@ class CsvParsing(object):
         ListDesiredArgs = []
         
         
-    def FileNamesGen(self, dirname):
+    def FileNamesGen(self, dirname): #extracts and yields filenames from a directory, .csv and .txt
         time1 = time.time()
         for dirpath, subdirs, filenames in os.walk(dirname): #os.walk is a generator
             if filenames != []:
@@ -251,26 +240,48 @@ class CsvParsing(object):
                     continue
                 else:
                     break
+    
+    
+    def OpenFileForVars(self, filenameForVars): #extracts names of variable to iterate over for gradient
+        # and choose a random name as a third member of the list of names
+        with open(filenameForVars, 'r') as fileobj:
+            line     = fileobj.readline()
+            lineSub  = re.sub(r' ', ",", line)
+            LineList = lineSub.split(",") 
+            for field in LineList:
+                LineList[LineList.index(field)] = field.replace(" ","") 
+            ListOfFields = list(LineList) #creates a copy of LineList
+            for field in LineList:
+                if field   == "":
+                    ListOfFields.remove("")
+                elif field == "\n":
+                    ListOfFields.remove("\n")
+                elif field == "Cycle":
+                    ListOfFields.remove("Cycle")
+                elif field == "RealTimeStep":
+                    ListOfFields.remove("RealTimeStep")
+            RandomField = random.choice(ListOfFields)
+            return RandomField, ListOfFields
             
-y = CsvParsing(["Cycle","rho", "rhoV[0]"], '/Users/nikita.zabolotniy/Desktop/ai4cfd_N0012_AoA0p0_Mach0p01_Re1000000p0_0_report.restart.csv')
-y.OpenFile()
-y.Plot(ListDesiredArgs)
-a = list(ListOfFields)
+            
+DummyInstance = CsvParsing(["Cycle","rho", "rhoV[0]"], "dummy instance to use function")
+
+path = "/Users/nikita.zabolotniy/Desktop/Directory_2" 
+
+GenFilenames = DummyInstance.FileNamesGen(path)     
+
+for filename in GenFilenames:
+    RandomField, ListOfFields = DummyInstance.OpenFileForVars(filename)
+    for i in ListOfFields:
+        x = CsvParsing(["Cycle", i, RandomField], filename)
+        x.OpenFile()
+        x.Plot(ListDesiredArgs)
+    
+#TBD ADD CODE TO CHECK WHETHER N IS DIV BY 3 ETC
+
+"""a = list(ListOfFields)
 for i in itertools.islice(list(ListOfFields), 3, len(ListOfFields) - 1):
     x = CsvParsing(["Cycle", i, "wall_Fx"],'/Users/nikita.zabolotniy/Desktop/ai4cfd_N0012_AoA0p0_Mach0p01_Re1000000p0_0_report.restart.csv')
     x.OpenFile()
     x.Plot(ListDesiredArgs)
-a = []
-#print ListOfFields
-"""path = "/Users/nikita.zabolotniy/Desktop/Directory_2" 
-
-GenFilenames = y.FileNamesGen(path)     
-
-for filename in GenFilenames:
-    x = CsvParsing(["Cycle","rhoE", "rhoV[0]"], filename)
-    x.OpenFile()
-    x.Plot(ListDesiredArgs)"""
-    
-
-
-
+a = []"""
