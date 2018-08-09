@@ -36,6 +36,8 @@ class CsvParsing(object):
                     continue
                 elif 2 <= TimeToBreak2 - TimeToBreak1 <= 5: #if wait for 2-5 sec more than 20 times - break
                     #print "2< TIME <5"
+                    #actually if loop over this for 20 times, ie there is no line 20 times, break
+                    #we start counting after there's been no line for more than 2 secs
                     time.sleep(0.2)
                     count += 1
                     if count < 20:
@@ -49,8 +51,9 @@ class CsvParsing(object):
                 TimeStep   = abs(StartTime - TimePassed)
                 #this tracks how long it takes to read another line
                 ListOfTimes.append(TimeStep)
-                yield line
                 TimeToBreak1 = StartTime = time.time()
+                yield line
+                
 
             AverageTime = np.mean(ListOfTimes)#MODIFY ST COMPUTES LAST ENTRIES or some subset 
             if AverageTime * 10000 > 43200: # 12*60*60 seconds in 12 hrs; 10k cycles; crude calculation
@@ -109,7 +112,7 @@ class CsvParsing(object):
         count2       = 0
         #Step20Plus   = [] #steps for computing the gradient
         for a_tuple in generator: #in ExtractArgs
-            count2 +=1
+            count2 += 1
             if len(Values20Plus) > 150:
                 #these are all the same length and we dont want them to get too big, cuz these are lists
                 Values20Plus = []
@@ -132,7 +135,7 @@ class CsvParsing(object):
                 #computes a list of gradients which gets larger every time we iterate the loop
                 #so want to extract the last n elements from this list
                 print Gradient, "Gradient", len(Gradient)
-                Means = self.ComputeMeanGrad(self.LastLineSplit(Gradient,n))
+                Means    = self.ComputeMeanGrad(self.LastLineSplit(Gradient,n))
                 #splits the last n elements of gradient into tow unequal parts, tail is shorter
                 if Means[0] < 2 and Means[1] < 2:
                     print "can consider termination", Means
@@ -144,7 +147,7 @@ class CsvParsing(object):
                         print "can terminate"
                         print DistOfMeans, "DistOfMeans"
                         global GlobalSwitch
-                        GlobalSwitch = False # stop adding values to argints
+                        GlobalSwitch   = False # stop adding values to argints
                         break
                     else:
                         #print "keep computing"
