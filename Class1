@@ -122,6 +122,7 @@ class CsvParsing(object):
                 Gradient     = []
 
             Values20Plus.append(a_tuple[argnum])
+            
             if count2 == 1:
                 FirstVal  = 0
                 SecondVal = 0
