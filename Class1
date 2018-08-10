@@ -12,16 +12,20 @@ class CsvParsing(object):
         
         
     def tail(self):
+    
         global ListOfTimes
-        ListOfTimes = []
-        self.fileobj.seek(0,0) 
+        ListOfTimes  = []
         TimeToBreak1 = StartTime = time.time()
-        count = 0
+        count        = 0
+        self.fileobj.seek(0,0) 
+        
         while not self.fileobj.closed:
             line = self.fileobj.readline()
+            
             if not line:
                 time.sleep(0.03)
                 TimeToBreak2 = time.time()
+                
                 if TimeToBreak2 - TimeToBreak1 < 2: 
                     #this keeps track of how long a document hasnt been updated 
                     # i.e. how long a line hasnt been added
@@ -32,12 +36,15 @@ class CsvParsing(object):
                     #can augment this bit do add conditions for termination, e.g. renew TimeToBreak1
                     time.sleep(0.2)
                     count += 1
+                    
                     if count < 20:
                         continue
                     else:
                         break
+                        
                 else: #if wait more than 5 sec break because prob run out of lines in a file
                     break
+                    
             else:
                 #this tracks how long it takes to read another line
                 TimePassed = time.time()
