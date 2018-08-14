@@ -1,327 +1,388 @@
-import numpy as np, matplotlib.pyplot as plt, time, re, math, os, random
+import math
+import os
+import random
+import time
+import re
 
-GlobalSwitch    = True
-ListDesiredArgs = []
-ListOfTimes     = [] 
+import numpy as np
+import matplotlib.pyplot as plt 
+
+list_of_desired_args = []
+global_switch = True
+list_of_times = [] 
 
 class CsvParsing(object):
+    """Define objects for parsing CSV files and gradient computation to decide termination."""
     
-    def __init__(self, ListOfVars, filename):
-        self.ListOfVars = ListOfVars
-        self.filename   = filename
+    
+    def __init__(self, list_of_vars, filename):
+        """Give an object a list of variables to be extracted from a CSV file and a pathname.
         
+        List of variables is an arbitrary length list containing the variable to plot against as 
+        the first entry (e.g. Cycle); filename is the pathname to a particular CSV file that may be
+        associated with that object's file object for further analysis.
+        """
+        
+        self.list_of_vars = list_of_vars
+        self.filename = filename
         
     def tail(self):
-    
-        global ListOfTimes
-        ListOfTimes  = []
-        TimeToBreak1 = StartTime = time.time()
-        count        = 0
-        self.fileobj.seek(0,0) 
+        """Track whether a given CSV file is open and being updated and extract lines from it continually.
+        
+        If a file is open, extract lines from it; if there are no lines being written to the file, 
+        wait for a specified amount of time, check conditions and either terminate execution 
+        and close the file or wait for more lines to be written.
+        """
+        
+        global list_of_times
+        list_of_times = [] 
+        time_to_break_1 = time.time()
+        start_time = time.time()
+        count = 0
+        self.fileobj.seek(0,0)
         
         while not self.fileobj.closed:
+            
             line = self.fileobj.readline()
             
             if not line:
                 time.sleep(0.03)
-                TimeToBreak2 = time.time()
-                
-                if TimeToBreak2 - TimeToBreak1 < 2: 
-                    #this keeps track of how long a document hasnt been updated 
-                    # i.e. how long a line hasnt been added
-                    #print "TIME <2"
+                time_to_break_2 = time.time()
+                if time_to_break_2 - time_to_break_1 < 2: 
+                    # Keep track of how long a document hasnt been updated.
+                    # I.e. how long a line hasn't been added.
                     continue
-                elif 2 <= TimeToBreak2 - TimeToBreak1 <= 5: 
-                    #if loop over this for 20 times, ie there is no line 20 times, break
-                    #can augment this bit do add conditions for termination, e.g. renew TimeToBreak1
+                elif 2 <= time_to_break_2 - time_to_break_1 <= 5: 
+                    # This block can be used to add some conitions on what to do if the idle period.
+                    # is between 2 and 5 seconds; currently there is no time variable update here.
                     time.sleep(0.2)
                     count += 1
-                    
                     if count < 20:
                         continue
                     else:
                         break
-                        
-                else: #if wait more than 5 sec break because prob run out of lines in a file
+                else: 
+                    # Assume that if wait more that 5 sec, then probably run out of lines in a file, so break.
                     break
-                    
             else:
-                #this tracks how long it takes to read another line
-                TimePassed = time.time()
-                TimeStep   = abs(StartTime - TimePassed)
-                ListOfTimes.append(TimeStep)
-                TimeToBreak1 = StartTime = time.time()
+                # Track how long it takes to read another line
+                time_passed = time.time()
+                time_step = abs(start_time - time_passed)
+                list_of_times.append(time_step)
+                time_to_break_1 = start_time = time.time()
                 yield line
                 
-
-            AverageTime = np.mean(ListOfTimes)
-            if AverageTime * 10000 > 43200: # 12*60*60 seconds in 12 hrs; 10k cycles; crude calculation
+            average_time = np.mean(list_of_times)
+            
+            if average_time * 10000 > 43200:  # 12*60*60 seconds in 12 hrs; 10k cycles; crude calculation.
                 break 
-            if np.mean(self.LinesInterval(ListOfTimes,20)) > 2:
-                break # break if the last 20 time intervals are longer than 2 sec
-            #TBD predict runtime, might be based on second derivatives
+            if np.mean(self.lines_interval(list_of_times,40)) > 2:
+                break  # Break if the last 40 time intervals are longer than 2 sec
         
         
-    def ExtractArgs(self, generator): 
+    def extract_arguments(self, generator): 
+        """Extract arguments that are in the list_of_vars and yield them as a tuple.
         
-        global GlobalSwitch
-        ListOfVars   = self.ListOfVars #list of variables to plot, and the first one is to plot against
-        GlobalSwitch = True 
-        count1       = 0 
-        IndexList    = [] # list of indices, to extract arguments that are in ListOfVars
-        switch_1     = False
-        switch_2     = True
+        Take tail generator as input and process it's lines to extract tuples of the arguments
+        that are needed for analysis, according to the list_of_vars.  Each tuple contains a single 
+        value for each of the variables, then those tuples are yielded individually.
+        The first component of a tuple is the variable to plot against, say Cycles.  
+        """
+        
+        global global_switch
+        list_of_vars = self.list_of_vars 
+        global_switch = True 
+        index_list = []  # List of indices to extract arguments that are in list_of_vars.
+        switch_1 = False
+        switch_2 = True
         
         for line in generator:
-            lineSub  = re.sub(r' ', ",", line)
-            LineList = lineSub.split(",") #transforms line, possibly with commas into a list with
-            #fields as members
-            for field in LineList:
-                LineList[LineList.index(field)] = field.replace(" ","") 
-                
+            line_sub = re.sub(r' ', ",", line)
+            line_list = line_sub.split(",")  # Transforms line into a list with fields as members.
+            for field in line_list:
+                line_list[line_list.index(field)] = field.replace(" ","")  # strip fields of whitespaces.
             if switch_2 == True:
-                for field in ListOfVars: #this determines the length of IndexList and hence DesiredArgs
-                    index    = LineList.index(field)
-                    IndexList.append(index)
-                    #gets indices for desired variables in LineList and puts them into IndexList
+                for field in list_of_vars:  # This determines the length of index_list and desired_arguments.
+                    index = line_list.index(field)
+                    index_list.append(index)  # Indices for desired variables are put into index_list.
                     switch_2 = False
                     
-            DesiredArgs = [] #set to empty to fill with current set of data points as strings
+            desired_arguments = []  # Set to empty to fill with current set of data points as strings.
             
-            for index in IndexList:
-                DesiredArgs.append(LineList[index])
-                
-            for i in range(len(DesiredArgs)):
+            for index in index_list:
+                desired_arguments.append(line_list[index])
+            for i in range(len(desired_arguments)):
                 try:
-                    DesiredArgs[i] = float(DesiredArgs[i])
+                    desired_arguments[i] = float(desired_arguments[i])
                     switch_1 = True
                 except ValueError:
                     switch_1 = False
                     continue
                     
-            DesiredArgs = tuple(DesiredArgs) #tuple of strings
+            desired_arguments = tuple(desired_arguments) 
             
-            if GlobalSwitch and switch_1 == True:
-                ListDesiredArgs.append(DesiredArgs) #list of tuples of desired args for plotting
+            if global_switch and switch_1 == True:
+                list_of_desired_args.append(desired_arguments)  # list of tuples of desired args for plotting.
             else: 
                 print "SWITCHED"
-                
             if switch_1 == True:
-                yield DesiredArgs #the desired tuple including the one to print against
+                yield desired_arguments 
                 
                 
-    def ProcessingPairs(self, generator, argnum = 1, n = 30): #will consider gradient when have at leat n data points
-        #argnum is the order of the argument in a tuple for which we want to compute the gradient, st from 0
-        #MODIFY TO TAKE A LIST OF ARGS AS INPUT TO PROCESS
-        #print "In ProcessingPairs"
+    def processing_pairs(self, generator, argnum=1, n=30): 
+        """Consider gradient when have at leat n data points.
         
-        global TimeStep
-        Values20Plus = []
-        TimeStep     = 0 #steps for computing derivatives
-        count2       = 0
-        #Step20Plus   = [] #steps for computing the gradient
+        Take extract_arguments as a generator argument. argnum denotes the index of the variable
+        in list_of_vars that you want to compute the gradient for"""
         
-        for a_tuple in generator: #in ExtractArgs
-            count2 += 1
-            if len(Values20Plus) > 150:
-                #these are all the same length and we dont want them to get too big, cuz these are lists
-                Values20Plus = []
-                Gradient     = []
-
-            Values20Plus.append(a_tuple[argnum])
+        values_20_plus = []
+        time_step = 0  # Steps for computing derivatives.
+        count_2 = 0
+        for a_tuple in generator: 
+            count_2 += 1
+            if len(values_20_plus) > 150:  # Lists are all the same length and don't want them to get too big.
+                values_20_plus = []
+                gradient = []
+                
+            values_20_plus.append(a_tuple[argnum])
             
-            if count2 == 1:
-                FirstVal  = 0
-                SecondVal = 0
-            if count2 == 2:
-                FirstVal  = a_tuple[0]
-            if count2 == 3:
-                SecondVal = a_tuple[0]
-                TimeStep  = SecondVal - FirstVal
+            if count_2 == 1:
+                first_val = 0
+                second_val = 0
+            if count_2 == 2:
+                first_val = a_tuple[0]
+            if count_2 == 3:
+                second_val = a_tuple[0]
+                time_step = second_val - first_val
 
-            if len(Values20Plus) < n:
+            if len(values_20_plus) < n:
                 continue
             else:
-                Gradient = np.gradient(Values20Plus, TimeStep) 
-                #computes a list of gradients which gets larger every time we iterate the loop
-                #so want to extract the last n elements from this list
-                print Gradient, "Gradient", len(Gradient)
+                # Compute a list of gradients which gets larger every time we iterate over the loop.
+                # Want to extract the last n elements from this list.
+                gradient = np.gradient(values_20_plus, time_step)
+                print gradient, "gradient", len(gradient)
                 
-                Means    = self.ComputeMeanGrad(self.LastLineSplit(Gradient,n))
-                #splits the last n elements of gradient into tow unequal parts, tail is shorter
+                # Split the last n elements of gradient into two unequal parts, tail is shorter.
+                means = self.compute_mean_gradient(self.last_line_split(gradient,n))
                 
-                if Means[0] < 2 and Means[1] < 2:
-                    print "can consider termination", Means
-                    
-                    DistOfMeans = self.CompareMeanGrad(Gradient,n)
-                    GradRatio , means  = self.CompareGradRatio(Gradient,n)
-                    
-                    print GradRatio, "GradRatio", means, "means"
-                    
-                    if DistOfMeans <= 0.1: # was 0.05 for non abs grad
-                        #this is deliberately too small s.t. it doesnt terminate
+                if means[0] < 2 and means[1] < 2:
+                    print "can consider termination", means
+                    distance_of_means = self.compare_mean_gradient(gradient,n)
+                    grad_ratio, means = self.compare_gradient_ratio(gradient,n)
+                    print grad_ratio, "grad_ratio", means, "means"
+                    if distance_of_means <= 0.1:
                         print "can terminate"
-                        print DistOfMeans, "DistOfMeans"
-                        global GlobalSwitch
-                        GlobalSwitch   = False # stop adding values to argints
+                        print distance_of_means, "distance_of_means"
+                        global global_switch
+                        global_switch = False  # Stop adding values to argints.
                         break
                     else:
-                        #print "keep computing"
-                        yield DistOfMeans
-                        
+                        yield distance_of_means
                 else:
                     print "cannot consider termination yet"
-                    print Means, "Means split unequally"
+                    print means, "means split unequally"
                     continue
 
                     
-    def LastLineSplit(self, list1, n):
-        #print "In LastLineSplit"
-        LastN_Entries = list1[-n:]
+    def last_line_split(self, list_1, n):
+        """Take a list as an input and split its last n values into two unequal parts.
+        
+        The list should be of the length divisible by 3.  Act on the gradient list variable.
+        Take the last added n entries of gradient and split them so that the tail values
+        are a third of the overall list length.  This is used to compute mean absolute gradient
+        values on those two parts and decide whether to proceed with the next
+        steps for considering termination in processing_pairs. Returns two lists.
+        Those lists are processed by compute_mean_gradient.
+        """
+        
+        last_n_entries = list_1[-n:]
         i = 2*n/3
         j = n/3
-        First23 = LastN_Entries[:i]
-        Last13  = LastN_Entries[-j:]
-        #returns two lists
-        return First23, Last13 
+        first_two_thirds = last_n_entries[:i]
+        last_third = last_n_entries[-j:]
+        return first_two_thirds, last_third
     
     
-    def LinesInterval(self, list1, n, m = None):
-        #print "In LinesInterval"
-        ListLast = list1[-n:m]
-        return ListLast
+    def lines_interval(self, list_1, n, m=None):
+        """Take a list as an input and return its slice.
+        
+        It is expected that the last values of a list needed to be extracted with step size 1.
+        This is necessary to compare gradient values in processing_pairs.
+        This method is used by compare_mean_gradient and compare_gradient_ratio.
+        """
+        
+        list_last = list_1[-n:m]
+        return list_last
     
     
-    def ComputeMeanGrad(self, InpPair):
-        #acts on LastLineSplit, a tuple of two unequal lengths lists
-        # this checks whether abs vals of the tail and head are less than 2, if so can consider termination
-        for i in range(len(InpPair[0])):
-            InpPair[0][i] = abs(InpPair[0][i])
-        for i in range(len(InpPair[1])):
-            InpPair[1][i] = abs(InpPair[1][i])  
-        #converts gradient values to abs values
-        mean1 = np.mean(InpPair[0])
-        mean2 = np.mean(InpPair[1])
-        return mean1, mean2
+    def compute_mean_gradient(self, input_pair):
+        """Act on last line split.
+        
+        Convert to absolute values the entries of head and tail returned by last_line_split.
+        Return the means of those absolute values. 
+        This is necessary to compare gradient values in processing_pairs.
+        """
+        
+        for i in range(len(input_pair[0])):
+            input_pair[0][i] = abs(input_pair[0][i])
+        for i in range(len(input_pair[1])):
+            input_pair[1][i] = abs(input_pair[1][i])
+        mean_1 = np.mean(input_pair[0])
+        mean_2 = np.mean(input_pair[1])
+        return mean_1, mean_2
         
         
-    def CompareMeanGrad(self, list1, n):
-        #acts on Gradient, splits in half
-        Half1 = self.LinesInterval(self.LinesInterval(list1, n), 0, int(math.floor(n/2))) #first n/2 elements
-        Half2 = self.LinesInterval(self.LinesInterval(list1, n), int(math.floor(-n/2)))
-        for i in range(len(Half1)):
-            Half1[i] = abs(Half1[i])
-        for i in range(len(Half2)):
-            Half2[i] = abs(Half2[i])
-        mean1 = np.mean(Half1)
-        mean2 = np.mean(Half2)
-        return abs(mean1 - mean2)
+    def compare_mean_gradient(self, list_1, n):
+        """Test further conditions for termination, act on gradient splitted in half.
+        
+        Once determined that gradient in last_line_split is less than 2, can run more tests
+        on the gradient list, but now act not on last_lines_split but instead on lines_interval
+        because want to get an even split of the last n entries to compute
+        difference of means of the absolute gradient values of those two parts
+        and their ratio.
+        """
+        
+        half_1 = self.lines_interval(self.lines_interval(list_1, n), 0, int(math.floor(n/2)))  # first n/2 elements.
+        half_2 = self.lines_interval(self.lines_interval(list_1, n), int(math.floor(-n/2)))
+        for i in range(len(half_1)):
+            half_1[i] = abs(half_1[i])
+        for i in range(len(half_2)):
+            half_2[i] = abs(half_2[i])
+        mean_1 = np.mean(half_1)
+        mean_2 = np.mean(half_2)
+        return abs(mean_1 - mean_2)
     
-    def CompareGradRatio(self, list1, n):
-        #this doesnt seem to be a good predictor because the range of values it takes is too wide with
-        #the current algorithm. Moreover, it may not be relible for large values of gradient 
-        #because its a ratio; even tho we consider last values, sudden jumps may trick it
-        #strangely enough, its value before termination it quite small most of the times 
-        #acts on Gradient, splits in half
-        Half1 = self.LinesInterval(self.LinesInterval(list1, n), 0, int(math.floor(n/2))) #first n/2 elements
-        Half2 = self.LinesInterval(self.LinesInterval(list1, n), int(math.floor(-n/2)))
-        mean1 = np.mean(Half1)
-        mean2 = np.mean(Half2)
+    def compare_gradient_ratio(self, list_1, n):
+        """Test further conditions for termination, act on gradient splitted in half.
+        
+        Works similar to compare_mean_gradient only it's used to compute gradient ratio.
+        
+        This doesnt seem to be a good predictor because the range of values it takes is too wide with
+        the current algorithm.  Moreover, it may not be relible for large values of gradient.
+        Even though we consider last values, sudden jumps may trick it.
+        Strangely enough, its value before termination it quite small most of the times.
+        """
+        
+        half_1 = self.lines_interval(self.lines_interval(list_1, n), 0, int(math.floor(n/2))) 
+        half_2 = self.lines_interval(self.lines_interval(list_1, n), int(math.floor(-n/2)))
+        mean1 = np.mean(half_1)
+        mean2 = np.mean(half_2)
         return mean2/mean1, (mean2, mean1)
             
-    
-    def OpenFile(self):
+    def open_file(self):
+        """Open a file and apply all the methods in order to make a decision on termination."""
+        
         with open(self.filename, 'r') as fileobj:
             self.fileobj   = fileobj
-            GeneratorTail  = self.tail()
-            ExtractedArgs  = self.ExtractArgs(GeneratorTail)
-            GetDistOfMeans = self.ProcessingPairs(ExtractedArgs)
-            for i in GetDistOfMeans:
-                print i, "GetDistOfMeans"
-            maximum1 = max(ListOfTimes)
-            print maximum1, "maximum time"
+            generator_tail  = self.tail()
+            extracted_arguments  = self.extract_arguments(generator_tail)
+            get_distance_of_means = self.processing_pairs(extracted_arguments)
+            for i in get_distance_of_means:
+                print i, "get_distance_of_means"
+                
+            maximum_1 = max(list_of_times)
+            print maximum_1, "maximum time"
             
-            
-    def Plot(self, ListOfTuples): #will act on a list of tuples of arguments
-        ListOfVars = self.ListOfVars
-        UnzipList  = zip(*ListOfTuples) #long tuples of values for args
+    def plot(self, list_of_tuples):
+        """Act on a list of tuples of arguments to plot them against the first one in each tuple.
+        
+        For a single CSV file, plot as many plots as there are varaibles, computing gradient 
+        for each one of them.
+        """
+        
+        list_of_vars = self.list_of_vars
+        unzipped_list  = zip(*list_of_tuples)  # Long tuples of values for arguments.
         plt.figure(2, figsize=(6, 4), dpi=140, facecolor='w', edgecolor='k')
-        for i in range(len(UnzipList) - 1):
-            plt.plot(UnzipList[0], UnzipList[i+1], label = ListOfVars[i+1])
+        for i in range(len(unzipped_list) - 1):
+            plt.plot(unzipped_list[0], unzipped_list[i+1], label = list_of_vars[i+1])
         plt.ylabel("Value") 
-        plt.xlabel(ListOfVars[0])
+        plt.xlabel(list_of_vars[0])
         plt.legend()
         plt.show()
         
-        covar = np.corrcoef([UnzipList[1], UnzipList[2]])
+        covar = np.corrcoef([unzipped_list[1], unzipped_list[2]])
         print covar
         
-        global ListDesiredArgs #empty ListDesiredArgs to be filled for future plotting
-        ListDesiredArgs = []
+        global list_of_desired_args  # Empty list_of_desired_args to be filled for future plotting.
+        list_of_desired_args = []
         
         
-    def FileNamesGen(self, dirname): #extracts and yields filenames from a directory, .csv and .txt
-        time1 = time.time()
-        for dirpath, subdirs, filenames in os.walk(dirname): #os.walk is a generator
+    def file_names_generator(self, dirname):
+        """Extract and yield filenames ending on .csv and .txt from a directory.
+        
+        The filenames are used to iterate over when processing data 
+        and evaluating gradients for variables in a directory.  For each filename 
+        an instance of the CsvParsing class is created.
+        """
+        
+        time_1 = time.time()
+        for dirpath, subdirs, filenames in os.walk(dirname):  # os.walk is a generator.
             if filenames != []:
                 for name in filenames:
-                    if ".txt" in name or ".csv" in name:
+                    if name.endswith(".txt") or name.endswith(".csv"):
                         yield os.path.join(dirpath,name)
-                        #augment to make more flexible
             else:
                 print "no files in a directory"
-                time2 = time.time()
-                if time2 - time1 < 5:
+                time_2 = time.time()
+                if time_2 - time_1 < 5:
                     continue
                 else:
                     break
     
     
-    def OpenFileForVars(self, filenameForVars): #extracts names of variable to iterate over for gradient
-        # and choose a random name as a third member of the list of names
-        with open(filenameForVars, 'r') as fileobj:
+    def open_file_for_variables(self, filename_for_vars):
+        """Extract names of variables to iterate over for gradient, return them as a list.
+        
+        Extract all the dependent variable names, i.e. don't include Cycle or RealTimeStep.
+        Return a list of dependent variables. For each of those variables gradient will be computed
+        and the variable data will be plotted. Randomly choose a variable to plot together with
+        the one that the gradient will be computed for. Can choose more if list_of_vars 
+        has more than three members.
+        """
+        
+        with open(filename_for_vars, 'r') as fileobj:
             line     = fileobj.readline()
             lineSub  = re.sub(r' ', ",", line)
-            LineList = lineSub.split(",") 
-            
-            for field in LineList:
-                LineList[LineList.index(field)] = field.replace(" ","") 
-            ListOfFields = list(LineList) #creates a copy of LineList
-            
-            for field in LineList:
+            line_list = lineSub.split(",") 
+            for field in line_list:
+                line_list[line_list.index(field)] = field.replace(" ","") 
+            list_of_fields = list(line_list)  # Creates a copy of line_list.
+            for field in line_list:
                 if field   == "":
-                    ListOfFields.remove("")
+                    list_of_fields.remove("")
                 elif field == "\n":
-                    ListOfFields.remove("\n")
+                    list_of_fields.remove("\n")
                 elif field == "Cycle":
-                    ListOfFields.remove("Cycle")
+                    list_of_fields.remove("Cycle")
                 elif field == "RealTimeStep":
-                    ListOfFields.remove("RealTimeStep")
-                    
-            RandomField = random.choice(ListOfFields)
-            return RandomField, ListOfFields
+                    list_of_fields.remove("RealTimeStep")
+            random_field = random.choice(list_of_fields)
+            return random_field, list_of_fields
             
             
-DummyInstance = CsvParsing(["Cycle","rho", "rhoV[0]"], "dummy instance to use function")
+dummy_instance = CsvParsing(["Cycle","rho", "rhoV[0]"], "dummy instance to use function")
 
 path = "/Users/nikita.zabolotniy/Desktop/Directory_2" 
 
-GenFilenames = DummyInstance.FileNamesGen(path)     
+gen_filenames = dummy_instance.file_names_generator(path)     
 
-for filename in GenFilenames:
-    RandomField, ListOfFields = DummyInstance.OpenFileForVars(filename) #open file to get variable names
-    #for gradient computation for all variables along with one randomly selected extra variable to plot
-    #then will again open the same file for processing
-    for i in ListOfFields:
-        x = CsvParsing(["Cycle", i, RandomField], filename)
-        x.OpenFile()
-        x.Plot(ListDesiredArgs)
+for filename in gen_filenames:
+    random_field, list_of_fields = dummy_instance.open_file_for_variables(filename) 
+    # Will again open the same file for processing
+    for i in list_of_fields:
+        # Can give any number of variables to plot to the instance creating call.
+        # Try ["Cycle", i, random_field, "rhoV[0]", "rhoV[1]"] for example.
+        x = CsvParsing(["Cycle", i, random_field], filename)
+        x.open_file()
+        x.plot(list_of_desired_args)
     
-#TBD ADD CODE TO CHECK WHETHER N IS DIV BY 3 ETC
 
-"""a = list(ListOfFields)
-for i in itertools.islice(list(ListOfFields), 3, len(ListOfFields) - 1):
-    x = CsvParsing(["Cycle", i, "wall_Fx"],'/Users/nikita.zabolotniy/Desktop/ai4cfd_N0012_AoA0p0_Mach0p01_Re1000000p0_0_report.restart.csv')
-    x.OpenFile()
-    x.Plot(ListDesiredArgs)
-a = []"""
+# TBD: 
+#### add code to check whether n is divisible by 3
+#### test with muptiple values for list_of_vars
+#### take into account cases where gradient is 150-170 entries long.
+#### modify average_time st computes last entries or some subset 
+#### find a way to estimate running time, ML?
+#### some do not terminate because their gradient fluctuation is large locally but not globally
+
