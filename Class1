@@ -361,7 +361,7 @@ class CsvParsing(object):
             return random_field, list_of_fields
             
             
-dummy_instance = CsvParsing(["Cycle","rho", "rhoV[0]"], "dummy instance to use function")
+dummy_instance = CsvParsing(["Cycle","rho", "rhoV[0]"], "dummy instance to use class methods")
 
 path = "/Users/nikita.zabolotniy/Desktop/Directory_2" 
 
