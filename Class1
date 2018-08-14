@@ -380,7 +380,7 @@ for filename in gen_filenames:
 
 # TBD: 
 #### add code to check whether n is divisible by 3
-#### test with muptiple values for list_of_vars
+#### test with multiple values for list_of_vars
 #### take into account cases where gradient is 150-170 entries long.
 #### modify average_time st computes last entries or some subset 
 #### find a way to estimate running time, ML?
