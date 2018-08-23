@@ -18,9 +18,11 @@ X = get_truncated_normal(mean=1, sd=0.35, low=0, upp=2)
 @click.option("--freq", type=float, help='Frequency of writing lines, in seconds')
 @click.option("--run_time", type=int, help='Total run time')
 def open_and_read_print(csv, freq, ret, run_time):
-    """Define tww object file names, then write data to simulate data from a solver.
+    """Write data to simulate solver behaviour.
         
-    Can set and adjust time intervals for writing to the file to simulate solver.
+    If run_time is not specified then run until all the line have been written. If freq is not specified
+    write line with time intervals chosen from a normal distibution with paramenters
+    defined in get_truncated_normal.
     """
         
     with open(csv, "r") as csvfile_1:
