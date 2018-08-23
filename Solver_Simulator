@@ -1,0 +1,74 @@
+import time
+import random
+import click
+import sys
+from scipy.stats import truncnorm
+
+
+def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
+    "Create a truncated normal random variable based on the above parameters."
+    return truncnorm(
+        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
+
+X = get_truncated_normal(mean=1, sd=0.35, low=0, upp=2)
+    
+@click.command()
+@click.option("--ret", default=0, type=int, help='Exit code for simulation')
+@click.option("--csv", type=str, help='File path')
+@click.option("--freq", type=float, help='Frequency of writing lines, in seconds')
+@click.option("--run_time", type=int, help='Total run time')
+def open_and_read_print(csv, freq, ret, run_time):
+    """Define tww object file names, then write data to simulate data from a solver.
+        
+    Can set and adjust time intervals for writing to the file to simulate solver.
+    """
+        
+    with open(csv, "r") as csvfile_1:
+        time_of_entrance = time.time()
+        raw_lines = csvfile_1.readlines()
+        if run_time is None:
+            for line in raw_lines:
+                if freq is not None:
+                    time.sleep(freq)
+                    print line
+                else:
+                    # Pick a single sample from the truncated normal random variable X
+                    single_normal_sample = X.rvs()
+                    time.sleep(single_normal_sample)
+                    print line, single_normal_sample, "Value for random sample"
+
+        else:
+            for line in raw_lines:
+                if freq is not None:
+                    time.sleep(freq)
+                    time_check = time.time()
+
+                    if time_check - time_of_entrance < run_time:
+                        print line
+                    else:
+                        sys.exit(ret)
+
+                else:
+                    single_normal_sample = X.rvs()
+                    time.sleep(single_normal_sample)
+                    time_check = time.time()
+
+                    if time_check - time_of_entrance < run_time:
+                        print line
+                    else:
+                        sys.exit(ret)
+                
+    sys.exit(ret)
+                 
+if __name__ == "__main__":
+    open_and_read_print()        
+                    
+#"/Users/nikita.zabolotniy/Desktop/CSV1.txt", '/Users/nikita.zabolotniy/Desktop/CSVtoWrite.txt'
+#python Class_4.py --csv="/Users/nikita.zabolotniy/Desktop/CSV1.txt" --freq=0.01 --ret=7 --run_time=200
+#python Class_4.py --csv="/Users/nikita.zabolotniy/Desktop/CSV1.txt" --ret=7 for normal samples for freq
+
+                    
+
+
+
+
