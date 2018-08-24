@@ -68,14 +68,15 @@ def open_and_read_print(csv, freq, ret, run_time):
                             time.sleep(freq)
                             
                             txtfile.write(line)
-                        #print (line)
+                            #print (line)
                         else:
                             # Pick a single sample from the truncated normal random variable X
                             single_normal_sample = uniform_rand_number(0, 2)
                             time.sleep(single_normal_sample)    
                             
                             txtfile.write(line)
-                            print (line, single_normal_sample, "Value for random sample")
+                            #print (line)
+                            print (single_normal_sample, "Value for random sample")
     
                 else:
                     print ("Writing lines to a txt file")
