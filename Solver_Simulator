@@ -1,16 +1,47 @@
+from __future__ import print_function
+
 import time
 import random
 import click
 import sys
-from scipy.stats import truncnorm
+import math
+import mpmath
+import sys
+import string
 
 
-def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
-    "Create a truncated normal random variable based on the above parameters."
-    return truncnorm(
-        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
+def eprint(*args, **kwargs):
+    """Print to stderr."""
+    print(*args, file=sys.stderr, **kwargs)
 
-X = get_truncated_normal(mean=1, sd=0.35, low=0, upp=2)
+
+def phi(x):
+    "Cumulative distribution function for the standard normal distribution"
+    
+    return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+
+def phi_inv(x):
+    """Inverse of Cumulative distribution function for the standard normal distribution
+    
+    Accepts values in an open interval from 0 to 1.
+    """
+    return math.sqrt(2) * mpmath.erfinv((2 * x) - 1)
+
+
+def uniform_rand_number(lo, upp, mu=1, sigma=0.35):
+    """Returns a random variable from a truncated normal distribution with mean 0.5 and sd 0.35.
+    
+    lo is the lower bound for the truncated normal distribution, upp - upper.
+    """
+    mu = 1  # value for mean
+    sigma = 0.35  # value for standard deviation
+    
+    alpha = (lo - mu) / sigma
+    beta = (upp - mu) / sigma
+    
+    x = (phi_inv(phi(alpha) + random.uniform(0,1) * (phi(beta) - phi(alpha))) * sigma) + mu
+    return x
+
     
 @click.command()
 @click.option("--ret", default=0, type=int, help='Exit code for simulation')
@@ -24,43 +55,64 @@ def open_and_read_print(csv, freq, ret, run_time):
     write line with time intervals chosen from a normal distibution with paramenters
     defined in get_truncated_normal.
     """
+    if csv is not None:    
+        with open(csv, "r") as csvfile_1:
+            time_of_entrance = time.time()
+            raw_lines = csvfile_1.readlines()
+            with open("testfile.txt", "a", 1) as txtfile:
+                txtfile.truncate(0)
+                if run_time is None:
+                    print ("Writing lines to a txt file")
+                    for line in raw_lines:
+                        if freq is not None:
+                            time.sleep(freq)
+                            
+                            txtfile.write(line)
+                            #print (line)
+                        else:
+                            # Pick a single sample from the truncated normal random variable X
+                            single_normal_sample = uniform_rand_number(0, 2)
+                            time.sleep(single_normal_sample)    
+                            
+                            txtfile.write(line)
+                            #print (line)
+                            print (single_normal_sample, "Value for random sample")
+    
+                else:
+                    print ("Writing lines to a txt file")
+                    for line in raw_lines:
+                        if freq is not None:
+                            time.sleep(freq)
+                            time_check = time.time()
+    
+                            if time_check - time_of_entrance < run_time:
+                                txtfile.write(line)
+                                #print (line)
+                            else:
+                                print ("Run time has been exceeded")
+                                sys.exit(ret)
+
+                        else:
+                            single_normal_sample = uniform_rand_number(0, 2)
+                            time.sleep(single_normal_sample)
+                            time_check = time.time()
+
+                            if time_check - time_of_entrance < run_time:
+                                txtfile.write(line)
+                                #print (line)
+                            else:
+                                print ("Run time has been exceeded")
+                                sys.exit(ret)
+
+        print ("Done reading and writing lines")        
+        sys.exit(ret)
+    else:
+        digits = "".join( [random.choice(string.digits) for i in xrange(8)] )
+        chars = "".join( [random.choice(string.letters) for i in xrange(15)] )
+        print ("CSV file is absent and life is utterly meaningless " + digits + chars)
+        eprint("CSV file is absent and this is not right, hence an error.")
+        sys.exit(ret)
         
-    with open(csv, "r") as csvfile_1:
-        time_of_entrance = time.time()
-        raw_lines = csvfile_1.readlines()
-        if run_time is None:
-            for line in raw_lines:
-                if freq is not None:
-                    time.sleep(freq)
-                    print line
-                else:
-                    # Pick a single sample from the truncated normal random variable X
-                    single_normal_sample = X.rvs()
-                    time.sleep(single_normal_sample)
-                    print line, single_normal_sample, "Value for random sample"
-
-        else:
-            for line in raw_lines:
-                if freq is not None:
-                    time.sleep(freq)
-                    time_check = time.time()
-
-                    if time_check - time_of_entrance < run_time:
-                        print line
-                    else:
-                        sys.exit(ret)
-
-                else:
-                    single_normal_sample = X.rvs()
-                    time.sleep(single_normal_sample)
-                    time_check = time.time()
-
-                    if time_check - time_of_entrance < run_time:
-                        print line
-                    else:
-                        sys.exit(ret)
-                
-    sys.exit(ret)
                  
 if __name__ == "__main__":
     open_and_read_print()        
@@ -70,6 +122,7 @@ if __name__ == "__main__":
 #python Class_4.py --csv="/Users/nikita.zabolotniy/Desktop/CSV1.txt" --ret=7 for normal samples for freq
 
                     
+
 
 
 
