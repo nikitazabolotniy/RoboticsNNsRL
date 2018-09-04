@@ -1,0 +1,63 @@
+import os
+import shutil
+
+def move_txt(dirname_to_move_out, dirname_to_move_to):
+    
+    for dirpath, subdirs, filenames in os.walk(dirname_to_move_out):  # os.walk is a generator.
+            if filenames != []:
+                for name in filenames:
+                    if name.endswith(".csv"):
+                        file_name = os.path.join(dirpath,name)
+                        if not os.path.isfile(os.path.join(dirname_to_move_to, name)):
+                            shutil.move(file_name, dirname_to_move_to)
+                        else:
+                            continue
+                        
+            else:
+                print "no files in a directory"
+                
+move_txt("/Users/nikita.zabolotniy/Desktop/Dir-1", "/Users/nikita.zabolotniy/Desktop/Dir-2")
+
+
+import os
+import shutil
+import gzip
+import re
+
+directory_in = "/Users/nikita.zabolotniy/Desktop/csv_files_only"
+directory_out = "/Users/nikita.zabolotniy/Desktop/Unpacked_CSVs"
+
+def directory_unpack(dirname_to_unpack_from, dirname_to_move_to):
+    "Unpack files with .gz extension in a directory to another directory."
+    
+    for dirpath, subdirs, filenames in os.walk(dirname_to_unpack_from):  # os.walk is a generator.
+            if filenames != []:
+                for name in filenames:
+                    if name.endswith(".gz"):
+                        file_name = os.path.join(dirpath,name)
+                        print file_name
+                        
+                        with gzip.open(file_name, "r") as f_obj_in:
+                            str_csv = re.sub(r".gz", "", file_name)
+                            dirpath_with_slash = dirpath + "/"
+                            str_csv_no_dirpath = re.sub(dirpath_with_slash, "", str_csv)
+                            path = os.path.join(dirname_to_move_to, str_csv_no_dirpath)  
+                            print str_csv_no_dirpath
+                            print path
+                            with open(path, "w") as f_obj_out:
+                                shutil.copyfileobj(f_obj_in, f_obj_out)
+            else:
+                print "no files in a directory"
+
+        
+directory_unpack(directory_in, directory_out) 
+
+
+import re
+
+string = "/Users/nikita.zabolotniy/Desktop/ai4cfd_N0012_AoA0p0_Mach0p01_Re1000000p0_0_report.restart.csv.gz"
+directory = "/Users/nikita.zabolotniy/Desktop/Unpacked_CSVs"
+str_csv = re.sub(".gz", "", string)
+bold_str_csv = re.sub("/Users/nikita.zabolotniy/Desktop/", "", str_csv)
+path = directory + "/" + bold_str_csv
+bold_str_csv
