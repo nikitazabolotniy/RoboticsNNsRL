@@ -1,0 +1,222 @@
+import pandas as pd
+import numpy as np
+a = ["a","b","c","d"]
+b = [1,"g","c",4]
+s = pd.Series(a, b)
+x = np.array([[1, "a", 3, 4], [3, 5, 6, "c"]])
+x.shape
+x[1,2]
+d = {'a' : 0., 'b' : 1., 'c' : 2.} 
+ss = pd.Series(d)  # ordered lexically
+pd.Series(d, [1,"b","m"])  # NaN if pass integers or letters that dont match keys
+# treats the other list as an optional argument
+df = pd.DataFrame([1,2,3,4,5], [6,7,8,9,0])  # single 1D array input is treated as a column vector
+
+dic = {'one' : pd.Series([1., 2., 3.], index=['a', 'p', 'c']),
+         'two' : pd.Series([1., 2., 3., 4.], index=['a', 'b', 'c', 'd'])} 
+
+#pd.DataFrame([s, ss])
+#pd.DataFrame(d, index=['d', 'b', 'a'], columns=['two', 'three'])
+df = pd.DataFrame(dic)
+df1 = pd.DataFrame({"uno":s, "dos": ss}, index=["a","b","c","d"])
+df["one"]
+
+
+
+def my_input_fn(features, targets, batch_size=1, shuffle=True, num_epochs=None):
+    """Trains a linear regression model of one feature.
+  
+    Args:
+      features: pandas DataFrame of features
+      targets: pandas DataFrame of targets
+      batch_size: Size of batches to be passed to the model
+      shuffle: True or False. Whether to shuffle the data.
+      num_epochs: Number of epochs for which data should be repeated. None = repeat indefinitely
+    Returns:
+      Tuple of (features, labels) for next data batch
+    """
+  
+    # Convert pandas data into a dict of np arrays.
+    features = {key:np.array(value) for key,value in dict(features).items()}                                           
+ 
+    # Construct a dataset, and configure batching/repeating.
+    ds = Dataset.from_tensor_slices((features,targets)) # warning: 2GB limit
+    ds = ds.batch(batch_size).repeat(num_epochs)
+    
+    # Shuffle the data, if specified.
+    if shuffle:
+        ds = ds.shuffle(buffer_size=10000)
+    
+    # Return the next batch of data.
+    features, labels = ds.make_one_shot_iterator().get_next()
+    return features, labels
+    
+    
+    
+    
+from random import randint
+from sklearn.linear_model import LinearRegression
+
+TRAIN_SET_LIMIT = 1000
+TRAIN_SET_COUNT = 100
+
+TRAIN_INPUT = list()  # a list of lists
+TRAIN_OUTPUT = list()
+for i in range(TRAIN_SET_COUNT):
+    a = randint(0, TRAIN_SET_LIMIT)  # Return a random integer a such that 0 <= a <= lim
+    b = randint(0, TRAIN_SET_LIMIT)
+    c = randint(0, TRAIN_SET_LIMIT)
+    op = a + (7*b) + (3*c)
+    TRAIN_INPUT.append([a, b, c])
+    TRAIN_OUTPUT.append(op)
+    
+predictor = LinearRegression(n_jobs=-1)
+predictor.fit(X=TRAIN_INPUT, y=TRAIN_OUTPUT)  # fit takes as input X, a list of lists
+
+X_TEST = [[10, 20, 30], [3, 75, 21]]
+outcome = predictor.predict(X=X_TEST)
+coefficients = predictor.coef_
+
+print('Outcome : {}\nCoefficients : {}'.format(outcome, coefficients))
+
+
+
+
+[(lambda i: lambda x: x + i + 1)(i)
+ for i in range(24, 42)][1](0)
+
+for i in [0,1,2,3]:
+    adders[i]=lambda a,i=i: i+a
+    
+[lambda x: x + i + 1
+ for i in range(24, 42)][0](0)
+ 
+ 
+ 
+ from scipy.stats import truncnorm
+import matplotlib.pyplot as plt
+
+def get_truncated_normal(mean=0, sd=1, low=0, upp=10):
+    return truncnorm(
+        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
+
+X1 = get_truncated_normal(mean=1, sd=0.35, low=0, upp=2)
+X2 = get_truncated_normal(mean=5.5, sd=1, low=1, upp=10)
+X3 = get_truncated_normal(mean=8, sd=1, low=1, upp=10)
+
+fig, ax = plt.subplots(4, sharex=True, figsize=(8,12))
+ax[0].hist(X1.rvs(10000), density=True)
+ax[1].hist(X2.rvs(10000), density=True)
+ax[2].hist(X3.rvs(10000), density=True)
+#plt.plot([0,5],[0,9])
+plt.show()
+#print X1.rvs(10)
+
+
+
+
+import numpy as np
+features = [("one",1), ("two",2),("three",3)]
+features = {key:np.array(value) for key,value in dict(features).items()} 
+print features
+
+
+
+
+def surround_with(surrounding):
+    """Return a function that takes a single argument."""
+    def surround_with_value(word):
+        return '{}{}{}'.format(surrounding, word, surrounding)
+    return surround_with_value
+
+def transform_words(content, targets, transform): # transform takes surround_with('*') as input
+    """Return a string based on *content* but with each occurrence 
+    of words in *targets* replaced with
+    the result of applying *transform* to it."""
+    result = ''
+    for word in content.split():
+        if word in targets:
+            result += ' {}'.format(transform(word))
+        else:
+            result += ' {}'.format(word)
+    return result
+
+markdown_string = 'My name is Jeff Knupp and I like Python but I do not own a Python'
+markdown_string_italicized = transform_words(markdown_string, ['Python', 'Jeff'],
+        surround_with('*'))
+print(markdown_string_italicized)
+print "bla, there's a space"
+
+
+
+
+from functools import wraps
+
+price = 100
+
+def currency(f):
+    "currency docstring"
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        "wrapper docstring"
+        return '$' + str(f(*args, **kwargs))
+
+    return wrapper
+
+@currency
+def price_with_tax(tax_rate_percentage):
+    """Return the price with *tax_rate_percentage* applied.
+    *tax_rate_percentage* is the tax rate expressed as a float, like
+    "7.0" for a 7% tax rate."""
+    return price * (1 + (tax_rate_percentage * .01))
+
+
+print (price_with_tax(7.0))
+price_with_tax.__name__
+print price_with_tax.__doc__
+
+
+
+def a_new_decorator(a_func):
+
+    def wrapTheFunction():
+        print("I am doing some boring work before executing a_func()")
+
+        a_func()
+
+        print("I am doing some boring work after executing a_func()")
+
+    return wrapTheFunction
+
+def a_function_requiring_decoration():
+    print("I am the function which needs some decoration to remove my foul smell")
+
+a_function_requiring_decoration()
+#outputs: "I am the function which needs some decoration to remove my foul smell"
+
+a_function_requiring_decoration = a_new_decorator(a_function_requiring_decoration)
+#now a_function_requiring_decoration is wrapped by wrapTheFunction()
+
+a_function_requiring_decoration()
+#outputs:I am doing some boring work before executing a_func()
+#        I am the function which needs some decoration to remove my foul smell
+#        I am doing some boring work after executing a_func()
+
+
+
+
+
+@a_new_decorator
+def a_function_requiring_decoration():
+    """Hey you! Decorate me!"""
+    print("I am the function which needs some decoration to "
+          "remove my foul smell")
+
+a_function_requiring_decoration()
+#outputs: I am doing some boring work before executing a_func()
+#         I am the function which needs some decoration to remove my foul smell
+#         I am doing some boring work after executing a_func()
+
+#the @a_new_decorator is just a short way of saying:
+# a_function_requiring_decoration = a_new_decorator(a_function_requiring_decoration)
+print(a_function_requiring_decoration.__name__)
