@@ -1,0 +1,60 @@
+import re
+import csv
+with open("/Users/nikitazabolotniy/Desktop/CFMS-2016jul-2018jun.csv", "r") as fileobj_1:
+    lines = csv.reader(fileobj_1, delimiter="|")
+    with open("/Users/nikitazabolotniy/Desktop/commas.txt", "w") as fileobj_2:
+        lines_2 = csv.writer(fileobj_2, delimiter=",")
+        lines_2.writerows(lines)
+
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+dataset_train = pd.read_csv("/Users/nikitazabolotniy/Desktop/commas.txt", low_memory=False)
+dataset_train
+
+tr_set = dataset_train.iloc[:, 2:14].values  # Purely integer-location based indexing for selection by position.
+# if add .values, get a collection of series rather that a DataFrame
+# if use[2:14] the slice rows, if use [:, 2:14] then slice columns
+tr_set = np.delete(tr_set, 5, 0)
+
+import re
+import datetime
+import time
+tr_set_converted = tr_set.copy()
+for i in range(len(tr_set)):
+    if "days" in tr_set[i, 11]:
+        list_with_string = re.findall("\d", tr_set[i, 11])
+        string_with_number_of_days = "".join(list_with_string)
+        number_of_days = int(string_with_number_of_days)
+        number_of_secs = number_of_days * 24 * 60 * 60
+        tr_set_converted[i, 11] = number_of_secs
+    elif "day" in tr_set[i, 11]:
+        list_with_string = re.findall("\d", tr_set[i, 11])
+        string_with_number_of_days = "".join(list_with_string)
+        number_of_days = int(string_with_number_of_days)
+        number_of_secs = number_of_days * 24 * 60 * 60
+        tr_set_converted[i, 11] = number_of_secs
+    else:
+        x = time.strptime(tr_set[i, 11].split(',')[0],'%H:%M:%S')
+        number_of_secs = datetime.timedelta(hours=x.tm_hour,minutes=x.tm_min,seconds=x.tm_sec).total_seconds()
+        tr_set_converted[i, 11] = number_of_secs
+        
+tr_set_new = tr_set_converted.copy()
+for i in range(len(tr_set_converted)):
+    if tr_set_converted[i, 11] < 5:
+        tr_set_new[i, 11] = 1 # first class
+    elif tr_set_converted[i, 11] < 30:
+        tr_set_new[i, 11] = 2 # second class
+    elif tr_set_converted[i, 11] < 60:
+        tr_set_new[i, 11] = 3 # third class
+    elif tr_set_converted[i, 11] < 120:
+        tr_set_new[i, 11] = 4 # fourth class
+    elif tr_set_converted[i, 11] < 240:
+        tr_set_new[i, 11] = 5 # fifth class
+    elif tr_set_converted[i, 11] < 600:
+        tr_set_new[i, 11] = 6 # sixth class
+    elif tr_set_converted[i, 11] >= 600:
+        tr_set_new[i, 11] = 7 # seventh class
+tr_set_new
+  
