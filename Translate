@@ -1,0 +1,47 @@
+import pandas as pd
+import sys
+
+def eprint(*args, **kwargs):
+    """Print to stderr."""
+    print(*args, file=sys.stderr, **kwargs)
+
+def dataprep(filename, delimiter):
+    required_variables = ['Partition','ReqNodes','ReqCPUS','NNodes','TimeLimit',
+                         'Submit','Start','End','Eligible','QueueTime']
+    dataframe = pd.read_csv(filename)
+    header_list_of_strings = list(dataframe.column.values)  # can also use list(dataframe)
+    #dataframe.iloc[1,:] = 0
+    (rows, cols) = dataframe.shape
+
+    if cols > 1:
+        try:
+            raise ValueError
+        finally:
+            eprint('The file format could not be recognized')
+            sys.exit(1)
+
+    # string splitting is redundant
+    #string_of_features = "|".join(header_list_of_strings)
+    feature_names = []
+    
+    for i in range(len(header_list_of_strings)):
+        feature_names.append(lower(header_list_of_strings[i]))
+    
+    num_of_features = len(feature_names) 
+    var_index = list()
+
+    for i in range(len(required_variables)):  # Check all required variables are supplied 
+        if not lower(required_variables[i]) in feature_names:
+            eprint('Missing {}.'.format(required_variables[i]))
+            sys.exit(1)  # whats the best way to handle that error?
+        else:  # if the variable in required_variables in present in feature_names
+            # Record the positions of the variables within the data set
+            var_index.append(feature_names.index(required_variables[i]))  
+
+    
+
+
+
+
+
+    
