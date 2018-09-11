@@ -8,7 +8,7 @@ def eprint(*args, **kwargs):
 def dataprep(filename, delimiter):
     required_variables = ['Partition','ReqNodes','ReqCPUS','NNodes','TimeLimit',
                          'Submit','Start','End','Eligible','QueueTime']
-    dataframe = pd.read_csv(filename)
+    dataframe = pd.read_csv(filename, delimiter=delimiter)
     header_list_of_strings = list(dataframe.column.values)  # can also use list(dataframe)
     #dataframe.iloc[1,:] = 0
     (rows, cols) = dataframe.shape
@@ -37,6 +37,38 @@ def dataprep(filename, delimiter):
         else:  # if the variable in required_variables in present in feature_names
             # Record the positions of the variables within the data set
             var_index.append(feature_names.index(required_variables[i]))  
+
+    # arrange columns to match their appearance in feature_names
+    for i in range(num_of_features):
+        
+
+
+
+
+
+
+     
+            
+            
+            
+            
+            
+            
+            
+ 
+ dataset_small_slice = dataset_train.copy()
+dataset_small_slice = dataset_small_slice.iloc[0:10,:]
+dataset_small_slice.iloc[1,:] = 0
+(rows, cols) = dataset_small_slice.shape
+dataset_small_slice_shortened = dataset_small_slice.copy()
+list_of_names = list(dataset_small_slice)
+a = [0, 2, 5, 8, 4, 3, 11]
+for i in list_of_names:
+    if list_of_names.index(i) not in a:
+        dataset_small_slice_shortened.drop(i, axis=1)
+
+dataset_small_slice_shortened = dataset_small_slice.drop("QOS", axis=1)
+dataset_small_slice_shortened
 
     
 
