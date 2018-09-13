@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import sys
 import re
+import datetime
+import time
 
 def eprint(*args, **kwargs):
     """Print to stderr."""
@@ -204,17 +206,60 @@ def dataprep(filename, delimiter):
 
     partitions = dataframe_shortened.iloc[:, [partition_ind]]  # dataframe with 1 column
     # Final clean
-    (nrows, ncols) = delete_entries.shape
-    for i in range(rows):
+    (del_rows, ncols) = delete_entries.shape
+    for i in range(del_rows):
         index_to_delete = delete_entries.iloc[i, 0]
+
         queue_time_process.drop(index_to_delete, inplace=True)
-        partitions 
-        req_nodes
-        req_cpus
-        req_time
-        n_nodes
+        partitions.drop(index_to_delete, inplace=True)
+        req_nodes.drop(index_to_delete, inplace=True)
+        req_cpus.drop(index_to_delete, inplace=True)
+        req_time.drop(index_to_delete, inplace=True)
+        n_nodes.drop(index_to_delete, inplace=True)
+        sub_time.drop(index_to_delete, inplace=True)
+        start_time.drop(index_to_delete, inplace=True)
+        end_time.drop(index_to_delete, inplace=True)
+        eligible_time.drop(index_to_delete, inplace=True)
+    
+    # Sort by submission time - some mixing in submission time was identified
+    sub_time = sub_time.sort_values(by=0)
+    # Preserved indices of sorted elements
+    sub_ind = list(sub_time.index)
+
+    req_nodes = req_nodes.reindex(sub_ind)
+    req_cpus = req_cpus.reindex(sub_ind)
+    req_time = req_time.reindex(sub_ind)
+    n_nodes = n_nodes.reindex(sub_ind)
+    start_time = start_time.reindex(sub_ind)
+    end_time = end_time.reindex(sub_ind)
+    queue_time_process = queue_time_process.reindex(sub_ind)
+    #eligible_time = eligible_time.reindex(sub_ind)
+
+
+    load_all = pd.DataFrame(0, index=np.arange(len(queue_time_process)), columns=[0])
+    # Maximum avalable number of nodes for each partition - change as appropriate
+    max_nodes = [8,20,32,120]
+    name_partition = partitions.drop_duplicates(keep="first")
+    del_ind_namepart = list()
+    for i in range(len(name_partitions)):
+        if "all" in name_partitions.iloc[i, 0]:
+            del_ind_namepart.append(i)
+
+    name_partition.drop(del_ind_namepart, inplace=True)
+    
+    # Calculate load for each partition and assemble
+    part_inds = list()
+    start_part_1 = pd.DataFrame()
+    start_part_2 = pd.DataFrame()
+    for i in range(len(name_partition)):
+        for j in range(len(partitions)):
+            if name_partition.iloc[i, 0] in partitions.iloc[j, 0]:
+                part_inds.append(j)  # indices from partitions with matching fields
+        data = pd.DataFrame({0: start_time.iloc[]})
+        start_part_1 = start_time.iloc[part_inds]
         
 
+    
 
 
 
