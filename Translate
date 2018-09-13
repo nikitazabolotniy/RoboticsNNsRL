@@ -1,5 +1,9 @@
+from __future__ import print_function
+
 import pandas as pd
+import numpy as np
 import sys
+import re
 
 def eprint(*args, **kwargs):
     """Print to stderr."""
@@ -30,6 +34,7 @@ def dataprep(filename, delimiter):
         feature_names.append(lower(header_list_of_strings[i]))
     
     num_of_features = len(feature_names) 
+    # variable ordinal numbers from the original dataframe are preserved in the future
     var_index = list()
 
     for i in range(len(required_variables)):  # Check all required variables are supplied 
@@ -45,20 +50,64 @@ def dataprep(filename, delimiter):
                           zip(df.columns, range(len(df.columns)))})
     # Get only the required fetures to save memory
     # and arrange columns to match their appearance in feature_names
+    # this corresponds to splitData = splitData(:,keepInds)
     dataframe_shortened = dataframe_headernum.iloc[:, var_index]
+    # numbering of the original
     list_of_headernums = list(dataframe_shortened)
     # move QTime to the end of the dataframe
     list_of_headernums.remove(column_num_QTime)
     list_of_headernums.append(column_num_QTime)
     dataframe_shortened = dataframe_shortened[[list_of_headernums]]
-
     
-
-
-
-
-
-
-
-
+    # extract row with queue times
+    queue_times = dataframe_shortened.loc[:, column_num_QTime]
+    # a dataframe column of zeros
+    queue_time_process = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    for i in range(rows):
+            qtime_now = queue_time.iloc[i]
+            if not " day" in qtime_now:  # qtime_now is standard time vector
+                # get a struct time list of time values for year, month etc
+                struct_time = time.strptime(qtime_now.split(',')[0], "%d-%m-%Y %H:%M:%S")
+                number_of_secs = datetime.timedelta(
+                    hours=struct_time.tm_hour, minutes=struct_time.tm_min,
+                    seconds=struct_time.tm_sec).total_seconds()
+                number_of_minutes = float(number_of_secs)/60
+                queue_time_process.iloc[i] = number_of_minutes  # queue time in minutes
+            else:  # queue time in days
+                numof_days_string_list = re.findall(r'-?\d+\.?\d*', qtime_now)
+                number_of_days = float(numof_days_string_list[0])
+                number_of_minutes = number_of_days * 24 * 60
+    
+    # Process numerical variables
+    print ('Cleaning input features...\n')
+    required_variables = ['Partition','ReqNodes','ReqCPUS','NNodes','TimeLimit',
+                         'Submit','Start','End','Eligible','QueueTime']
+    partition_ind = feature_names.index("Partition")
+    reqnodes_ind = feature_names.index("ReqNodes")
+    reqcpus_ind = feature_names.index("ReqCPUS")
+    nnodes_ind = feature_names.index("NNodes")
+    timelimit_ind = feature_names.index("TimeLimit")
+    submit_ind = feature_names.index("Submit")
+    start_ind = feature_names.index("Start")
+    end_ind = feature_names.index("End")
+    eligible_ind = feature_names.index("Eligible")
+    queuetime_ind = feature_names.index("QueueTime")
+                
+    delete_entries = pd.DataFrame[] # empty dataframe
+    
+    # Memory
+    eligible_time = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    req_time = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    req_nodes = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    req_cpus = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    n_nodes = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    sub_time = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    start_time = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    end_time = pd.DataFrame(0, index=np.arange(rows), columns=[0])
+    
+    for i in range(rows):  # Problems with eligible time
+        eli_time = dataframe_shortened.iloc[i, eligible_ind]
+        if "unknown" in eli_time:
+            #delete_entries should accumulate row indices where unknown value is
+        
     
