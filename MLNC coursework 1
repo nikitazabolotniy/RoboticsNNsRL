@@ -1,0 +1,653 @@
+%MLNC Coursework1
+%CID = 01588311
+function RunCoursework()
+
+x = 1;
+y = 1;
+p = 0.5 + 0.5*(x/10);
+gamma = 0.2 + 0.5*(y/10);
+tol = 0.0001;
+
+[NumStates, NumActions, TransitionMatrix, ...
+         RewardMatrix, StateNames, ActionNames, AbsorbingStates] ...
+         = PersonalisedGridWorld(p);
+     
+nstates = NumStates;
+nact = NumActions;    
+     
+%unbiased policy 
+%Q2
+Policy = pol_mat_coursework(nstates, nact)
+[V] = PolicyEvaluation(Policy, TransitionMatrix, RewardMatrix, AbsorbingStates, gamma, tol);
+
+
+
+%Q3
+%make initial update with unbiased policy
+path1 = [14, 10, 8, 4, 3];
+path2 = [11, 9, 5, 6, 6, 2];
+path3 = [12, 11, 11, 9, 5, 9, 5, 1, 2];
+[PolicyQ3b] =  MaxProbPolicy(TransitionMatrix, Policy, path1);
+paths = {path1, path2, path3};
+%keep updating base on the new policy
+for ii = 2:30
+    if ii == 2 || ii == 3 
+        [PolicyQ3b] =  MaxProbPolicy(TransitionMatrix, PolicyQ3b, paths{ii});
+    elseif ii ~= 3 && 0 == mod(ii,3)
+        [PolicyQ3b] =  MaxProbPolicy(TransitionMatrix, PolicyQ3b, paths{3});
+    else
+        [PolicyQ3b] =  MaxProbPolicy(TransitionMatrix, PolicyQ3b, paths{mod(ii,3)});
+    end
+end
+
+%probabilities for paths with unbiased policy
+p1 = comp_path_prob(Policy, TransitionMatrix, path1);
+p2 = comp_path_prob(Policy, TransitionMatrix, path2);
+p3 = comp_path_prob(Policy, TransitionMatrix, path3);
+%probabilities for paths with updated probability maximising policy
+p11 = comp_path_prob(PolicyQ3b, TransitionMatrix, path1);
+p22 = comp_path_prob(PolicyQ3b, TransitionMatrix, path2);
+p33 = comp_path_prob(PolicyQ3b, TransitionMatrix, path3);
+
+likelyhood_ratio = [p11/p1, p22/p2, p33/p3];
+
+
+
+%Q4a generate 10 traces and put them into a cell
+traces_cell = {};
+for iii = 1:10
+    trace_single_string = ...
+        traces(TransitionMatrix, RewardMatrix, Policy, ActionNames, StateNames);
+    traces_cell{iii} = trace_single_string;
+end
+
+
+%Q4b monte carlo evaluation based on 10 traces
+MCV = montecarlo(traces_cell, gamma);
+
+%Q4c
+measures = [];
+for jj = 1:10
+    measure = RMSE(V, jj, traces_cell, gamma);
+    measures = [measures, measure];
+   
+end
+
+figure(1)
+plot(measures, 'LineWidth',2, "color",  [1 .5 0])
+xlabel('Number or traces');
+ylabel('Value of measure');
+title('Plot of RMSE measure');
+
+
+%Q5
+%arb e policy
+arb_e_Policy = arb_e_policy(nstates, nact);
+%MC e greedy control
+[e_Policy, Returns_from_episodes, trace_len_episodes, No_disc_returns_from_episodes] = comp_e_policyMC(0.1, arb_e_Policy, TransitionMatrix, RewardMatrix, ActionNames, StateNames, gamma, 30, 10);
+%compute and plot the rest
+num_traces = length(trace_len_episodes(1,:));
+av_len_traces = zeros(1, num_traces);
+av_no_disc_returns = zeros(1, num_traces);
+stds_len = zeros(1, num_traces);
+stds_returns = zeros(1, num_traces);
+%for discounted returns graphs (trace length is the same)
+disc_returns = zeros(1, num_traces);
+disc_stds_returns = zeros(1, num_traces);
+
+for i = 1:num_traces
+    av_len_traces(i) = mean(trace_len_episodes(:,i));
+    av_no_disc_returns(i) = mean(No_disc_returns_from_episodes(:,i));
+    stds_len(i) = std(trace_len_episodes(:,i));
+    stds_returns(i) = std(No_disc_returns_from_episodes(:,i));
+end
+
+for i = 1:num_traces
+    disc_returns(i) = mean(Returns_from_episodes(:,i));
+    disc_stds_returns(i) = std(Returns_from_episodes(:,i));
+end
+
+figure(2)
+hold on
+plot(av_len_traces, "LineWidth", 2)
+plot(av_len_traces + stds_len,"LineWidth", 1)
+plot(av_len_traces - stds_len,"LineWidth", 1)
+xval = 250;
+yval = av_len_traces(xval);
+txt1 = sprintf('X = %0.1f \n Y = %0.1f',xval, yval);
+text(xval, yval+550,txt1,'FontSize',14)
+txt2 = "example value";
+text(xval-75, yval+550, txt2,'FontSize',14)
+plot(xval, yval, "b.", 'MarkerSize',25);
+xlabel("Number of episode")
+ylabel("Episode length")
+title("Mean trace length per episode, 20 trials, {\fontsize{15} \epsilon} = 0.1")
+legend("mean", "mean + std", "mean - std")
+
+figure(3)
+hold on
+plot(av_no_disc_returns, "LineWidth", 2)
+plot(av_no_disc_returns + stds_returns, "LineWidth", 1)
+plot(av_no_disc_returns - stds_returns, "LineWidth", 1)
+xlabel("Number of episode")
+ylabel("NON discounted reward")
+title("Mean rewards collected per episode, 20 trials, {\fontsize{15} \epsilon} = 0.1")
+legend("mean", "mean + std", "mean - std")
+
+figure(4)
+hold on
+plot(disc_returns, "LineWidth", 2)
+plot(disc_returns + disc_stds_returns, "LineWidth", 1)
+plot(disc_returns - disc_stds_returns, "LineWidth", 1)
+xlabel("Number of episode")
+ylabel("Discounted reward")
+title("Mean rewards collected per episode, 20 trials, {\fontsize{15} \epsilon} = 0.1")
+legend("mean", "mean + std", "mean - std")
+
+%arb e policy
+arb_e_Policy = arb_e_policy(nstates, nact);
+%MC e greedy control
+[e_Policy, Returns_from_episodes, trace_len_episodes, No_disc_returns_from_episodes] = comp_e_policyMC(0.75, arb_e_Policy, TransitionMatrix, RewardMatrix, ActionNames, StateNames, gamma, 30, 10);
+%compute and plot the rest
+num_traces = length(trace_len_episodes(1,:));
+av_len_traces = zeros(1, num_traces);
+av_no_disc_returns = zeros(1, num_traces);
+stds_len = zeros(1, num_traces);
+stds_returns = zeros(1, num_traces);
+%for discounted returns graphs (trace length is the same)
+disc_returns = zeros(1, num_traces);
+disc_stds_returns = zeros(1, num_traces);
+
+for i = 1:num_traces
+    av_len_traces(i) = mean(trace_len_episodes(:,i));
+    av_no_disc_returns(i) = mean(No_disc_returns_from_episodes(:,i));
+    stds_len(i) = std(trace_len_episodes(:,i));
+    stds_returns(i) = std(No_disc_returns_from_episodes(:,i));
+end
+
+for i = 1:num_traces
+    disc_returns(i) = mean(Returns_from_episodes(:,i));
+    disc_stds_returns(i) = std(Returns_from_episodes(:,i));
+end
+
+figure(5)
+hold on
+plot(av_len_traces, "LineWidth", 2)
+plot(av_len_traces + stds_len,"LineWidth", 1)
+plot(av_len_traces - stds_len,"LineWidth", 1)
+xval = 250;
+yval = av_len_traces(xval);
+txt1 = sprintf('X = %0.1f \n Y = %0.1f',xval, yval);
+text(xval, yval+550,txt1,'FontSize',14)
+txt2 = "example value";
+text(xval-75, yval+550, txt2,'FontSize',14)
+plot(xval, yval, "b.", 'MarkerSize',25);
+xlabel("Number of episode")
+ylabel("Episode length")
+title("Mean trace length per episode, 20 trials, {\fontsize{15} \epsilon} = 0.75")
+legend("mean", "mean + std", "mean - std")
+
+figure(6)
+hold on
+plot(av_no_disc_returns, "LineWidth", 2)
+plot(av_no_disc_returns + stds_returns, "LineWidth", 1)
+plot(av_no_disc_returns - stds_returns, "LineWidth", 1)
+xlabel("Number of episode")
+ylabel("NON discounted reward")
+title("Mean rewards collected per episode, 20 trials, {\fontsize{15} \epsilon} = 0.75")
+legend("mean", "mean + std", "mean - std")
+
+figure(7)
+hold on
+plot(disc_returns, "LineWidth", 2)
+plot(disc_returns + disc_stds_returns, "LineWidth", 1)
+plot(disc_returns - disc_stds_returns, "LineWidth", 1)
+xlabel("Number of episode")
+ylabel("Discounted reward")
+title("Mean rewards collected per episode, 20 trials, {\fontsize{15} \epsilon} = 0.75")
+legend("mean", "mean + std", "mean - std")
+
+
+
+%FUNCTIONS
+%--------------------------------------------------------------------
+
+%Q2
+function Policy = pol_mat_coursework(nstates, nact)
+%this is a unbiased pocily
+Policy = zeros(nstates, nact);
+for i = 1:nstates
+    %action
+    for j = 1:nact
+        Policy(i,j) = polprob_func(i);
+    end
+end
+
+function polprob = polprob_func(prior_state)
+%P  1   2   3   4   5  6  7  G   <-- STATES 
+if ((prior_state == 2) || (prior_state == 3))
+    polprob = 0;
+else
+    polprob = 0.25;
+end
+end
+
+end
+
+%--------------------------------------------------------------------
+
+function [V] = PolicyEvaluation(Policy, T, R, Absorbing, gamma, tol)
+% Dynamic Programming: Policy Evaluation. Estimates V(s) for each state s.
+% Using 2 vectors for keeping track of Value Function, V(s)
+S = length(Policy); % number of states - introspecting transition matrix
+A = length(Policy(1,:)); % number of actions - introspecting policy matrix
+V = zeros(S, 1); % optimal value function vector 11x1 (V at step i)
+newV = V; % (V at step i+1)
+Delta = 2*tol; % ensure initial Delta is greater than tolerance
+while Delta > tol % keep approximating while not met the tolerance level
+    for priorState = 1 : S
+        %this is either 1 or 0
+        if Absorbing(priorState) % do not update absorbing states
+            continue;
+        end
+        tmpV = 0;
+        for action = 1 : A
+            % we fix an action, get Q and multiply by transition (noise) probabilities
+            tmpQ = 0;
+            for postState = 1 : S
+                tmpQ = tmpQ + T(postState,priorState,action)*(R(postState,priorState,action) + gamma*V(postState));
+            end
+            tmpV = tmpV + Policy(priorState,action)*tmpQ;
+        end
+        newV(priorState) = tmpV;
+    end
+    %this is a vector of values
+    diffVec = abs(newV - V);
+    Delta = max(diffVec);
+    V = newV;
+end
+end
+
+%--------------------------------------------------------------------
+%Q3a
+function path_prob = comp_path_prob(Policy, TransitionMatrix, path)
+path_prob = 1;
+for j = 2:length(path)
+    multiply = prob_single_step(path(j-1), path(j));
+    path_prob = path_prob * multiply;
+end
+
+    
+    function total_tr_prob = prob_single_step(start, finish)
+    total_tr_prob = 0;
+    % i denotes action
+    for i = 1:4
+        %each i corresponds to one action in the policy, dont want to take into
+        %account when its opposite our desired direction, byt that already
+        %included in the transition matrix (it takes into account actions) 
+        %and we multiply by 0
+        increment = Policy(start, i)*TransitionMatrix(finish, start, i);
+        total_tr_prob = total_tr_prob + increment;
+    end
+    end
+end
+
+%--------------------------------------------------------------------
+%Q3b
+function [PolicyQ3b] =  MaxProbPolicy(T, Policy, path) 
+
+PolicyQ3b = Policy; % each row has A possible actions each has an assigned probability
+pathlen = length(path);
+
+for pathStateind = 2:pathlen
+    trprobs_for_chosen_act = [];
+    for action = 1:4
+        append = T(path(pathStateind), path(pathStateind-1), action);
+        trprobs_for_chosen_act = [trprobs_for_chosen_act, append];
+    end
+    [maxprob, index] = max(trprobs_for_chosen_act);
+    %update policy for an action tha maximises probability
+    if index == 1
+        
+        if PolicyQ3b(path(pathStateind-1), 1) > 0.8
+            continue
+        else
+            rem_prob = 1 - 1.2*PolicyQ3b(path(pathStateind-1), 1);
+            PolicyQ3b(path(pathStateind-1), 1) = 1.2*PolicyQ3b(path(pathStateind-1), 1);
+            PolicyQ3b(path(pathStateind-1), 2) = 0.1*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 3) = 0.8*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 4) = 0.1*rem_prob;
+        end
+    elseif index == 2
+        
+        if PolicyQ3b(path(pathStateind-1), 2) > 0.8
+            continue
+        else
+            rem_prob = 1 - 1.2*PolicyQ3b(path(pathStateind-1), 2);
+            PolicyQ3b(path(pathStateind-1), 1) = 0.1*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 2) = 1.2*PolicyQ3b(path(pathStateind-1), 2);
+            PolicyQ3b(path(pathStateind-1), 3) = 0.1*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 4) = 0.8*rem_prob;
+        end
+    elseif index == 3
+        
+        if PolicyQ3b(path(pathStateind-1), 3) > 0.8
+            continue
+        else
+            rem_prob = 1 - 1.2*PolicyQ3b(path(pathStateind-1), 3);
+            PolicyQ3b(path(pathStateind-1), 1) = 0.8*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 2) = 0.1*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 3) = 1.2*PolicyQ3b(path(pathStateind-1), 3);
+            PolicyQ3b(path(pathStateind-1), 4) = 0.1*rem_prob;
+        end
+    elseif index == 4
+        
+        if PolicyQ3b(path(pathStateind-1), 4) > 0.8
+            continue
+        else
+            rem_prob = 1 - 1.2*PolicyQ3b(path(pathStateind-1), 4);
+            PolicyQ3b(path(pathStateind-1), 1) = 0.1*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 2) = 0.8*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 3) = 0.1*rem_prob;
+            PolicyQ3b(path(pathStateind-1), 4) = 1.2*PolicyQ3b(path(pathStateind-1), 4);
+        end
+              
+    end
+end
+end
+
+
+
+%--------------------------------------------------------------------
+%Q4a This function generates a single trace as a character array
+function trace_single_char_string = traces(T, R, Policy, ActionNames, StateNames)
+% choose an element, string of 3 letter along dimension 1, along a row
+StartStates = ['s11'
+    's12'
+    's13'
+    's14'];
+% same as StartStates = ['s11'; 's12';'s13';'s14']
+%StartStatesNum = [11 12 13 14];
+%ActionNamesNum = [1 2 3 4];
+initial_state = datasample(StartStates,1);
+%initial_state = randsrc(1,1, StartStatesNum);
+
+str_current_state = initial_state;
+%string of state index
+str_current_num = str_current_state(2:end);
+%number of inital state
+num_current_state = str2num(str_current_num);
+%num_current_state = initial_state;
+%keeps track of whether we reached a terminal state
+terminal = 0;
+trace = {initial_state};
+trace_states = {initial_state};
+while terminal == 0
+    %choose an action based on policy
+    str_action = datasample(ActionNames, 1 ,'Weights', Policy(num_current_state,:));
+    %num_action = randsrc(1,1,[ActionNamesNum; Policy(num_current_state,:)]);
+    %str_action = StartStates(num_action,:);
+    %extract numerical value of the action, its index
+    num_action = find(ActionNames == str_action);
+    %transition to a state based on the action and previous state using T
+    %this is a column vector
+    tr_prob_array = T(:, num_current_state, num_action);
+    %states (also indices) to which we can transition from the current_state
+    non_zero_prob_states = find(tr_prob_array);
+    %transition prob to non zero prob states 
+    tr_prob_next_state = tr_prob_array(non_zero_prob_states);
+    num_next_state = datasample(non_zero_prob_states, 1 ,'Weights', tr_prob_next_state);
+    %num_next_state = randsrc(1,1, [non_zero_prob_states'; tr_prob_next_state']);
+    %string with state name
+    str_next_state = StateNames(num_next_state,:);
+    %reward
+    reward = R(num_next_state, num_current_state, num_action);
+    if (num_next_state == 2) || (num_next_state == 3)
+        %update trace
+        trace{end+1} = str_action;
+        trace{end+1} = reward;
+        %trace = [trace, str_action, reward];
+        trace_states{end+1} = str_next_state;
+        terminal = 1;
+    else
+        trace{end+1} = str_action;
+        trace{end+1} = reward;
+        trace{end+1} = str_next_state;
+        trace_states{end+1} = str_next_state;
+        %trace = [trace, str_action, reward, str_next_state];
+        str_current_state = str_next_state;
+        str_current_num = str_current_state(2:end);
+        %number of new current state
+        num_current_state = str2num(str_current_num);
+        %num_current_state = num_next_state;
+    end
+end
+%convert cell array into string array
+trace_cell_char = cellfun(@num2str,trace, 'UniformOutput',false);
+trace_single_char_string = strjoin(trace_cell_char, ",");
+end
+
+
+%--------------------------------------------------------------------
+%Q4b
+function MCV = montecarlo(traces_char_arrays, gamma)
+%traces_char_arrays is the cell of character arrays corresponding to traces
+num_of_traces = length(traces_char_arrays);
+MCV = zeros(14,1);
+%have at most 10 traces and 14 states for which can have values
+ReturnsMatrix = zeros(14, num_of_traces);
+
+for i = 1:num_of_traces
+    %need to refresh for each state
+    state_visit_counter = zeros(1,14);
+    %refresh counter for each trace
+    %update value function 10 times
+    %character array
+    char_array = traces_char_arrays{i};
+    trace_single_string = convertCharsToStrings(char_array);
+    %split into array of strings with rewards, states and actions as
+    %elements
+    %this is a column array
+    trace_splitted_string = split(trace_single_string, ",");
+    trace_len = length(trace_splitted_string);
+    %start cheching from a state
+    for j = 1:3:trace_len
+        Returns = 0;
+        str_current_state = trace_splitted_string(j);
+        str_current_state_num = extractAfter(str_current_state,1);
+        num_current_state = str2double(str_current_state_num);
+        if state_visit_counter(num_current_state)
+            continue
+        else
+            %record that the state was visited
+            state_visit_counter(num_current_state) = 1;
+            count = 0;
+            for state = j:3:trace_len
+                
+                str_reward = trace_splitted_string(state+2);
+                num_reward = str2double(str_reward);
+                %returns from ONE trace for a particular state
+                Returns = Returns + (gamma^count)*num_reward;
+                count = count + 1;
+                %line
+            end
+            
+            ReturnsMatrix(num_current_state, i) = Returns;
+        end
+    end
+end
+% need to find non zero elements of RewardMatrix and approximate value
+% function
+for k = 1:length(MCV)
+    %array of indices of non zero elements in a row, that is for a state
+    if sum(ReturnsMatrix(k,:)) == 0
+        MCV(k) = 0;
+    else
+        non_zero_elem_index = find(ReturnsMatrix(k,:));
+        %array of values that are non zero
+        non_zero_vals = ReturnsMatrix(k, non_zero_elem_index);
+        value_for_state = mean(non_zero_vals);
+        MCV(k) = value_for_state;
+    end
+end
+end
+
+
+%--------------------------------------------------------------------
+%Q4c
+function diffmeasure = RMSE(V, numtraces, traces_char_arrays, gamma)
+    % numtraces is how many traces were using to compute mc
+    %traces_char_arrays is the cell of character arrays
+    %truncated number of traces
+    trunc_traces_cell = traces_char_arrays(1:numtraces);
+    MCV = montecarlo(trunc_traces_cell, gamma);
+    diffmeasure = 0;
+    for i = 1:14
+        %sum of squared differences
+        sum_term = (MCV(i) - V(i))^2;
+        diffmeasure = diffmeasure + sum_term;
+    end
+    diffmeasure = diffmeasure/14;
+    %root mean squared error
+    diffmeasure = sqrt(diffmeasure);
+end
+
+
+
+%--------------------------------------------------------------------
+%Q5
+%compute arbitrary e soft policy
+function arb_e_Policy = arb_e_policy(nstates, nact)
+Q_rand = rand(nstates, nact);
+arb_e_Policy = zeros(nstates, nact);
+epsilon = rand;
+
+for i = 1:nstates
+    optimal_action = max(Q_rand(i,:));
+    optimal_action_index = find(Q_rand(i,:) == optimal_action, 1);
+    for k = 1:nact
+        if k == optimal_action_index
+            arb_e_Policy(i,k) = 1 - epsilon + (epsilon/4);
+        else
+            arb_e_Policy(i,k) = (epsilon/4);
+        end
+    end
+end
+end
+
+
+
+%--------------------------------------------------------------------
+%Q5 MC control e greedy, this take arb_e_Policy as one of inputs
+function [e_Policy, Returns_from_episodes, trace_len_episodes, No_disc_returns_from_episodes] = comp_e_policyMC(epsilon, Policy, T, R, ActionNames, StateNames, gamma, num_traces, num_trials)
+numS = length(T);
+numA = length(T(1,1,:));
+Returns_from_episodes = zeros(num_trials, num_traces);
+No_disc_returns_from_episodes = zeros(num_trials, num_traces);
+trace_len_episodes = zeros(num_trials, num_traces);
+
+for trial_num = 1:num_trials
+    
+    %want to omit having zeros in case there are states which return zeros
+    %leading to a loss of infirmation
+    %this wasnt the case with MC where we would just update 0 if a state
+    %returns 0, here there is no way of tracking which state precisely yielded
+    %0 and whether such a state has occured other than initialising to -999
+    ReturnsMatrix = repmat(-999, numS, numA, num_traces);
+    Q = repmat(-999, numS, numA);
+    e_Policy = Policy;
+    
+    for trace_num = 1:num_traces
+        
+        %trials same number of episodes
+        %keep track of which states have occured, dont care abount actions
+        %because consider them only once on the first occurence of a state
+        action_state_visit_counter = zeros(numS, numA);
+        %extract a single trace
+        trace_single_string = traces(T, R, e_Policy, ActionNames, StateNames);
+        trace_single_string = convertCharsToStrings(trace_single_string);
+        trace_splitted_string = split(trace_single_string, ",");
+        trace_len = length(trace_splitted_string);
+        trace_len_episodes(trial_num, trace_num) = trace_len;
+        %start from each state in a trace, no need to iterate through action
+        %because they're embedded in the trace, just like the states and
+        %rewards
+        
+        for j = 1:3:trace_len
+            Returns = 0;
+            Non_disc_returns = 0;
+            str_current_state = trace_splitted_string(j);
+            str_current_state_num = extractAfter(str_current_state,1);
+            %need to record action and state
+            num_current_state = str2double(str_current_state_num);
+            str_action = trace_splitted_string(j+1);
+            char_action = convertStringsToChars(str_action);
+            num_action = find(ActionNames == char_action);
+            
+            if action_state_visit_counter(num_current_state, num_action)
+                continue
+            else
+                %record that the state was visited
+                action_state_visit_counter(num_current_state, num_action) = 1;
+                count = 0;
+                %record the returns after visiting a state with an action
+                for state = j:3:trace_len
+                    str_reward = trace_splitted_string(state+2);
+                    num_reward = str2double(str_reward);
+                    %returns from ONE trace from a particular state
+                    Returns = Returns + (gamma^count)*num_reward;
+                    Non_disc_returns = Non_disc_returns + num_reward;
+                    count = count + 1;
+                end
+                ReturnsMatrix(num_current_state, num_action, trace_num) = Returns;
+                %record return from the entire trace
+                if j == 1
+                    Returns_from_episodes(trial_num, trace_num) = Returns;
+                end
+                if j == 1
+                    No_disc_returns_from_episodes(trial_num, trace_num) = Non_disc_returns;
+                end
+            end
+            
+        end
+        %update Q for a trace
+        for st = 1:numS
+            for act = 1:numA
+                %indices of traces for which state and action value is present
+                if max(ReturnsMatrix(st, act, :)) == -999
+                    continue
+                else
+                    non_trivial_elem_index = find(ReturnsMatrix(st, act, :) ~= -999);
+                    %array of values that are non -999
+                    non_trivial_vals = ReturnsMatrix(st, act, non_trivial_elem_index);
+                    value_for_state = mean(non_trivial_vals);
+                    Q(st, act) = value_for_state;
+                end
+            end
+        end
+        %find the action with highest return for each state
+        for i = 1:numS
+            optimal_action = max(Q(i,:));
+            %want to exclude cases where there is no update of Q due to lack of
+            %data
+            if optimal_action == -999
+                continue
+            else
+                optimal_action_index = find(Q(i,:) == optimal_action, 1);
+                %optimal_action_char = ActionNames(optimal_action_index);
+                for k = 1:numA
+                    if k == optimal_action_index
+                        e_Policy(i,k) = 1 - epsilon + (epsilon/4);
+                    else
+                        e_Policy(i,k) = (epsilon/4);
+                    end
+                end
+            end
+        end
+
+    end
+end
+
+
+end
+end
