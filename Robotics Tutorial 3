@@ -1,0 +1,237 @@
+Theta = sym('th',[1 7]);
+DHParam = [0 0 0.2703 Theta(1);
+    0.069 -pi/2 0 Theta(2);
+    0 pi/2 0.3644 Theta(3);
+    0.069 -pi/2 0 Theta(4);
+    0 pi/2 0.3743 Theta(5);
+    0.01 -pi/2 0 Theta(6);
+    0 pi/2 0.2295 Theta(7);];
+
+JointBounds = [-1.7016 1.7016;
+    -2.147 1.047;
+    -3.0541 3.0541;
+    -0.05 2.618;
+    -3.059 3.059;
+    -pi/2 2.094;
+    -3.059 3.059];
+
+% compute matrices individually and then multiply
+T01 = comphommat(DHParam(1,:));
+T12 = comphommat(DHParam(2,:));
+T23 = comphommat(DHParam(3,:));
+T34 = comphommat(DHParam(4,:));
+T45 = comphommat(DHParam(5,:));
+T56 = comphommat(DHParam(6,:));
+T67 = comphommat(DHParam(7,:));
+%put homogeneous matrices into a struct to recursively multiply
+TrMats(1).T = T01;
+TrMats(2).T = T12;
+TrMats(3).T = T23;
+TrMats(4).T = T34;
+TrMats(5).T = T45;
+TrMats(6).T = T56;
+TrMats(7).T = T67;
+TrHMat = TrMats(1).T;
+for i = 2:7
+    TrHMat = TrHMat*TrMats(i).T;
+end
+
+simplify(TrHMat);
+
+dfth1 = diff(TrHMat(1:3,4),Theta(1));
+dfth2 = diff(TrHMat(1:3,4),Theta(2));
+dfth3 = diff(TrHMat(1:3,4),Theta(3));
+dfth4 = diff(TrHMat(1:3,4),Theta(4));
+dfth5 = diff(TrHMat(1:3,4),Theta(5));
+dfth6 = diff(TrHMat(1:3,4),Theta(6));
+dfth7 = diff(TrHMat(1:3,4),Theta(7));
+
+a = sym("q", [7 1]);
+%compute initial angle configuration
+for i = 1:7
+    a = vpa(subs(a, a(i), JointBounds(i,1) + 0.5*(JointBounds(i,2) - JointBounds(i,1))));
+end
+%column-wise evaluation of the Jacobian, here for initial angles given in Q3.
+Jcol1 = vpa(subs(dfth1, Theta, a'));
+Jcol2 = vpa(subs(dfth2, Theta, a'));
+Jcol3 = vpa(subs(dfth3, Theta, a'));
+Jcol4 = vpa(subs(dfth4, Theta, a'));
+Jcol5 = vpa(subs(dfth5, Theta, a'));
+Jcol6 = vpa(subs(dfth6, Theta, a'));
+Jcol7 = vpa(subs(dfth7, Theta, a'));
+%putting the Jacobian columns together into Jacobian matrix.
+Jacobian = [Jcol1, Jcol2, Jcol3, Jcol4, Jcol5, Jcol6, Jcol7];
+
+JointBounds = [-1.7016 1.7016;
+    -2.147 1.047;
+    -3.0541 3.0541;
+    -0.05 2.618;
+    -3.059 3.059;
+    -pi/2 2.094;
+    -3.059 3.059];
+
+syms t
+dt = 0.002;
+tvals = (0:dt:4); % Time
+count = length(tvals);
+%position vector function for the ee
+EEPvect = TrHMat(1:3,4);
+%starting position of the ee
+EEpos = vpa(subs(EEPvect, Theta, a'));
+
+f = @(t)(0.338 + 0.05*cos(0.5*pi*t));
+g = @(t)(0.05*sin(0.5*pi*t));
+dfdt(t) = diff(f(t));
+dgdt(t) = diff(g, t);
+v1 = vpa(dfdt(tvals));
+v2 = vpa(dgdt(tvals));
+v3 = zeros(1, count);
+
+XYcoordDiff = [v1;v2;v3];
+JointAngles = a;
+JointSpeeds = [];
+%compute columns of the Jacobian and put them together
+Jcol1 = vpa(subs(dfth1, Theta, a'));
+Jcol2 = vpa(subs(dfth2, Theta, a'));
+Jcol3 = vpa(subs(dfth3, Theta, a'));
+Jcol4 = vpa(subs(dfth4, Theta, a'));
+Jcol5 = vpa(subs(dfth5, Theta, a'));
+Jcol6 = vpa(subs(dfth6, Theta, a'));
+Jcol7 = vpa(subs(dfth7, Theta, a'));
+Jacobian = [Jcol1, Jcol2, Jcol3, Jcol4, Jcol5, Jcol6, Jcol7];
+Pinv = pinv(Jacobian);
+PinvValues = Pinv;
+%qdot is 7 by 1
+qdot = Pinv * XYcoordDiff(:,1);
+%qpos is 7 by 1 
+qpos = a + qdot*dt;
+%append columns to Joint angles
+JointAngles = [JointAngles, qpos];
+%this second EE pos is similar to the first one because qdot*dt is small so
+%on the graph the starting position of the ee in the circle looks like a.
+EEpos = vpa(subs(EEPvect, Theta, qpos'));
+
+for i = 2:count
+    Jcol1 = vpa(subs(dfth1, Theta, qpos'));
+    Jcol2 = vpa(subs(dfth2, Theta, qpos'));
+    Jcol3 = vpa(subs(dfth3, Theta, qpos'));
+    Jcol4 = vpa(subs(dfth4, Theta, qpos'));
+    Jcol5 = vpa(subs(dfth5, Theta, qpos'));
+    Jcol6 = vpa(subs(dfth6, Theta, qpos'));
+    Jcol7 = vpa(subs(dfth7, Theta, qpos'));
+    Jacobian = [Jcol1, Jcol2, Jcol3, Jcol4, Jcol5, Jcol6, Jcol7];
+    Pinv = pinv(Jacobian);
+    qdot = Pinv * XYcoordDiff(:,i);
+    qpos = qpos + qdot*dt;
+    JointAngles = [JointAngles,qpos];
+    EEposAppend = vpa(subs(EEPvect, Theta, qpos'));
+    EEpos = [EEpos, EEposAppend];
+    PinvValues = [PinvValues; Pinv];
+end
+
+
+Pinv11 = [];
+Pinv12 = [];
+Pinv13 = [];
+
+Pinv21 = [];
+Pinv22 = [];
+Pinv23 = [];
+
+Pinv31 = [];
+Pinv32 = [];
+Pinv33 = [];
+
+Pinv41 = [];
+Pinv42 = [];
+Pinv43 = [];
+
+Pinv51 = [];
+Pinv52 = [];
+Pinv53 = [];
+
+Pinv61 = [];
+Pinv62 = [];
+Pinv63 = [];
+
+Pinv71 = [];
+Pinv72 = [];
+Pinv73 = [];
+for i = 0:(length(tvals)-1)
+    Pinv11 = [Pinv11, PinvValues(1 + i*7, 1)];
+    Pinv12 = [Pinv12, PinvValues(1 + i*7, 2)];
+    Pinv13 = [Pinv13, PinvValues(1 + i*7, 3)];
+    
+    Pinv21 = [Pinv21, PinvValues(2 + i*7, 1)];
+    Pinv22 = [Pinv22, PinvValues(2 + i*7, 2)];
+    Pinv23 = [Pinv23, PinvValues(2 + i*7, 3)];
+    
+    Pinv31 = [Pinv31, PinvValues(3 + i*7, 1)];
+    Pinv32 = [Pinv32, PinvValues(3 + i*7, 2)];
+    Pinv33 = [Pinv33, PinvValues(3 + i*7, 3)];
+    
+    Pinv41 = [Pinv41, PinvValues(4 + i*7, 1)];
+    Pinv42 = [Pinv42, PinvValues(4 + i*7, 2)];
+    Pinv43 = [Pinv43, PinvValues(4 + i*7, 3)];
+    
+    Pinv51 = [Pinv51, PinvValues(5 + i*7, 1)];
+    Pinv52 = [Pinv52, PinvValues(5 + i*7, 2)];
+    Pinv53 = [Pinv53, PinvValues(5 + i*7, 3)];
+    
+    Pinv61 = [Pinv61, PinvValues(6 + i*7, 1)];
+    Pinv62 = [Pinv62, PinvValues(6 + i*7, 2)];
+    Pinv63 = [Pinv63, PinvValues(6 + i*7, 3)];
+    
+    Pinv71 = [Pinv71, PinvValues(7 + i*7, 1)];
+    Pinv72 = [Pinv72, PinvValues(7 + i*7, 2)];
+    Pinv73 = [Pinv73, PinvValues(7 + i*7, 3)];
+end
+
+PinvElems = {Pinv11, Pinv12, Pinv13, Pinv21, Pinv22, Pinv23, Pinv31, ...
+    Pinv32, Pinv33, Pinv41, Pinv42, Pinv43, Pinv51, Pinv52, Pinv53, Pinv61, ...
+    Pinv62, Pinv63, Pinv71, Pinv72, Pinv73};
+figure(1)
+hold on
+for i = 1: length(PinvElems)
+    plot (tvals, PinvElems{i})
+end
+
+JointNames = ["S0", "S1", "E0", "E1", "W0", "W1", "W2"];
+figure(2)
+hold on
+for i = 1:length(JointNames)
+    plot(tvals, JointAngles(i,2:end),'LineWidth',2)
+end
+
+title('Plot of Joint angles');
+xlabel('Time in seconds');
+ylabel('Joint Angles, radians');
+legend(JointNames);
+%ylim([-1.5 1.5])
+xlim([0 4]);
+
+Xval = EEpos(1,:);
+Yval = EEpos(2,:);
+Zval = EEpos(3,:);
+
+figure(3)
+plot3(Xval, Yval, Zval, 'LineWidth', 2)
+title('Plot of EE trajectory')
+
+%the function to compute homogeneous matrices
+function homMat = comphommat(DHparam)
+    %general form of hom mat
+    homMat(1,1) = cos(DHparam(4));
+    homMat(1,2) = -sin(DHparam(4));
+    homMat(1,3) = 0;
+    homMat(1,4) = DHparam(1);
+    homMat(2,1) = sin(DHparam(4))*cos(DHparam(2));
+    homMat(2,2) = cos(DHparam(4))*cos(DHparam(2));
+    homMat(2,3) = -sin(DHparam(2));
+    homMat(2,4) = -sin(DHparam(2))*DHparam(3);
+    homMat(3,1) = sin(DHparam(4))*sin(DHparam(2));
+    homMat(3,2) = cos(DHparam(4))*sin(DHparam(2));
+    homMat(3,3) = cos(DHparam(2));
+    homMat(3,4) = cos(DHparam(2))*DHparam(3);
+    homMat(4,4) = 1;
+end
