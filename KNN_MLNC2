@@ -1,0 +1,57 @@
+%KNN
+%take in a single observation and classifier's parameters and output a classification (label)
+function label = KNN(observation, data) %need to accept labels and examples separately
+% data is the variable from which we get the neighbours (learn)
+%number of observations in the training set
+%observation is a row vector
+numneigh = 1;
+num_points = size(data.train_inp(:,1),1);
+indices = [];
+for j = 1:numneigh
+    distances = [];
+    for i = 1:num_points
+        if ismember(i, indices)
+            continue
+        else
+            distance = norm(observation - data.train_inp(i,:));
+            distances = [distances, distance];
+        end
+    end
+    [dist, neigh_index] = min(distances);
+    indices = [indices, neigh_index];
+end
+labels = data.train_label(indices);
+label = mode(labels);
+%label = KNN(partitioned.test_inp(1,:),5,partitioned)
+
+        
+    
+    
+
+labels_from_KNN = [];
+for i = 1:100 %size(partitioned.test_inp(:,1),1)
+    label = KNN(partitioned.test_inp(i,:),1,partitioned);
+    labels_from_KNN = [labels_from_KNN, label];
+end
+%on 1.01 on partition_data still got 95%
+%only on 1.001 got 73%
+% for i = 101:200
+%     label = KNN(partitioned_data.test_inp(i,:),5,partitioned_data);
+%     labels_from_KNN = [labels_from_KNN, label];
+% end
+correct_labels = [];
+for i = 1:100 %size(partitioned.test_inp(:,1),1)
+    if labels_from_KNN(i) == partitioned.test_label(i)
+        correct_labels = [correct_labels, 1];
+    else
+        correct_labels = [correct_labels, 0];
+    end
+end
+% for i = 1:100
+%     if labels_from_KNN(i) == partitioned_data.test_label(i+100)
+%         correct_labels = [correct_labels, 1];
+%     else
+%         correct_labels = [correct_labels, 0];
+%     end
+% end
+succrate = sum(correct_labels)/size(correct_labels,2)
