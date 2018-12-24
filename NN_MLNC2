@@ -1,0 +1,110 @@
+function parameters = NN(input, label)
+%start with one hidden layer of the same size as the number of labels
+% weight matrix where each layer in the third dimension corresponds to a 
+% layer of weights in the NN 
+% For each such 2D matrix a column vector is a single weight vector same
+% size as the input, number of column vectors is the number of nodes
+% in the layer to which the weights lead
+
+%TBD how to determine appropriate number of layers
+number_of_layers = 2;
+number_of_hidden_layers = 1;
+number_of_labels = size(unique(label),1);
+% number of nodes in layers 1 and 2 respectively
+number_of_nodes = [5, 5];
+number_of_inp = size(input,1);
+number_of_features = size(input,2);
+
+weights = struct;
+weights_layer_1 = rand(number_of_features, number_of_nodes(1));
+weights_layer_2 = rand(number_of_nodes(1), number_of_nodes(2));
+weights(1).a = weights_layer_1;
+weights(2).a = weights_layer_2;
+
+% matrix to store unit outputs 
+unit_outputs = zeros(number_of_nodes(1), length(number_of_nodes));
+
+% slope for sigmoid function y = @(x) (1./(1+exp(-4*x)));
+%alpha = 4;
+
+function hidden_unit_out = sigmoid(x)
+    alpha = 4;
+% can be applied to scalars and vectors
+hidden_unit_out = 1./(1+exp(-alpha*x));
+end
+
+function diff_sigmoid = differentiate_sigmoid(x)
+    alpha = 4;
+    %refers to the sigmoid above
+    diff_sigmoid = sigmoid(alpha, x)*(1 - sigmoid(alpha, x));
+end
+
+function last_layer_out = softmax(input)
+    last_layer_out = exp(input)/(sum(exp(input)));
+end
+
+%propagate information forward
+% the first layers of input values, in the form of a row vector 
+for i = 1:number_of_hidden_layers %size(unit_outputs,2) 
+% gotta loop over layers, for each iteration of a loop over examples
+    layer_output = input(1,:)*weights(i).a;
+    unit_outputs(:,i) = layer_output';
+    %apply sigmoid to the layer
+    unit_outputs(:,i) = sigmoid(4,unit_outputs(:,i));
+end
+
+%compute final later output
+layer_output = unit_outputs(:,i)*weights(number_of_hidden_layers+1).a;
+unit_outputs(:,number_of_hidden_layers+1) = layer_output';
+%compute the last layer output using softmax
+unit_outputs(:,number_of_hidden_layers+1) = softmax(...
+    unit_outputs(:,number_of_hidden_layers+1));
+
+sym_weights_layer_1 = sym('w')
+sym_weights_layer_2 = ;
+% now need to evaluate error and use backpropagation
+function error = error_f_online_gd(weights, single_label)
+    % error func for multiclass classification, for one examle
+    % label is single, for one data point
+    % code up error function in symbolic form to then evaluate and
+    % differentiate numerically
+    % code up labels in binary
+    binary_label = zeros(number_of_labels,1);
+    % desired index of the label is set to 1
+    binary_label(single_label) = 1;
+    omega = sym('w',[size(weights(:,1),1) size(weights(1,:),2)]);
+    % MSE
+%     error = 1/2*(unit_outputs(:,number_of_hidden_layers+1) - binary_label)'*...
+%         (unit_outputs(:,number_of_hidden_layers+1) - binary_label);
+    error = -sum(binary_label.*unit_outputs(:,number_of_hidden_layers+1));
+end
+
+function delta_last_layer = delta_last(j) %grad_ji(j,i)
+    % j is the output, i are inputs
+    % times the difference by sigmoid (already computed)
+    gradient_of_error_ji = unit_outputs(j,number_of_hidden_layers+1) - ...
+        binary_label(j)% * unit_outputs(i,number_of_hidden_layers);
+end
+
+        
+function delta = delta_hidden(layer, j)
+    % layer is the layer number, j is the node number
+    % ADJUST ALPHA TO BE CONST
+    if layer == (number_of_layers - 1)
+        delta = differentiate_sigmoid(unit_outputs(j, layer)) * ...
+            (weights_layer_2(j,:)*delta_last(j));
+    else
+        %should be weights_layer(layer+1)
+        delta = differentiate_sigmoid(unit_outputs(j, layer)) * ...
+            (weights_layer_1(j,:)*delta_hidden(layer+1, j));
+    end
+end
+
+% weight update
+% w_ji
+weights_layer_2(i,j) = weights_layer_2(i,j) + l_rate*delta(j)*unit_outputs(i,layer)
+weights_layer_1(i,j) = weights_layer_1(i,j) + l_rate*delta(j)*inputs(i)
+    
+
+
+
