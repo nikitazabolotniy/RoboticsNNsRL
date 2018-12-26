@@ -1,0 +1,161 @@
+function parameters = NN(input, label)
+%parameters = NN(partitioned_data.train_inp, partitioned_data.train_label)
+%start with one hidden layer of the same size as the number of labels
+% weight matrix where each layer in the third dimension corresponds to a 
+% layer of weights in the NN 
+% For each such 2D matrix a column vector is a single weight vector same
+% size as the input, number of column vectors is the number of nodes
+% in the layer to which the weights lead
+
+l_rate = 0.1;
+%TBD how to determine appropriate number of layers
+number_of_layers = 2;
+number_of_hidden_layers = 1;
+number_of_labels = size(unique(label),1);
+% number of nodes in layers 1 and 2 respectively
+number_of_nodes = [25, 5];
+number_of_inp = size(input,1);
+number_of_features = size(input,2);
+
+weights = struct;
+weights_layer_1 = rand(number_of_features, number_of_nodes(1));
+weights_layer_2 = rand(number_of_nodes(1), number_of_nodes(2));
+weights(1).a = weights_layer_1;
+weights(2).a = weights_layer_2;
+
+% matrix to store unit outputs 
+%need to make hidden units and outputs units separately
+hidden_unit_outputs = zeros(number_of_nodes(1), length(number_of_nodes)-1);
+last_unit_outputs = zeros(number_of_labels,1);
+
+% slope for sigmoid function y = @(x) (1./(1+exp(-4*x)));
+%alpha = 4;
+
+%matrix to store deltas
+% size1 = size(weights(1).a,1);
+% size2 = size(weights(2).a,1);
+% maxsize = max(size1,size2);
+deltas_last = zeros(size(last_unit_outputs,1), 1);
+deltas_hidden = zeros(size(hidden_unit_outputs,1), 1);
+
+random_data_indices = randperm(length(input(:,1)));
+
+for input_num = 1:length(input(:,1))
+    %indices shuffled randomly
+    rand_index = randi(length(random_data_indices));
+    data_index = random_data_indices(rand_index);
+    %this is a row vector
+    rand_sample = input(data_index,:);
+    rand_label = label(data_index);
+    %remove used index from data indices
+    random_data_indices(rand_index) = [];
+    %get corresponding label for random sample
+    binary_label = zeros(number_of_labels,1);
+    % desired index of the label is set to 1
+    binary_label(rand_label) = 1;
+    
+    % propagate information forward
+    % the first layer of input values is in the form of a row vector
+    % compute values for hidden layers
+    for layer_num = 1:number_of_layers %size(unit_outputs,2) 
+    % gotta loop over layers, for each iteration of a loop over examples
+        if layer_num == 1
+            layer_output = rand_sample*weights(layer_num).a;
+            hidden_unit_outputs(:,layer_num) = layer_output';
+            %apply sigmoid to the layer
+            hidden_unit_outputs(:,layer_num) = sigmoid(hidden_unit_outputs(:,layer_num));
+        else
+            %compute final layer activation and values
+            layer_output = hidden_unit_outputs(:,1)'*weights(layer_num).a;
+            last_unit_outputs(:,1) = layer_output';
+            %compute the last layer output using softmax
+            last_unit_outputs(:,1) = softmax(...
+                last_unit_outputs(:,1));
+        end
+    end
+    
+    % need to save delta values because as we update weights won't be able
+    % to update weights in previous layers becsause that would require
+    % values of weights before we updated them
+    for jj = 2:-1:1%size(unit_outputs,2):-1:1 %number of layers
+        if jj == 2%size(unit_outputs,2)
+            for ii = 1:size(last_unit_outputs,1)
+                deltas_last(ii,1) = delta_last(ii);
+            end
+        else
+            for ii = 1:size(hidden_unit_outputs,1)
+            deltas_hidden(ii,1) =  differentiate_sigmoid(...
+                hidden_unit_outputs(ii, 1))*(weights(jj+1).a(ii,:)*deltas_last(:,1));
+            end
+        end
+    end
+        
+    
+    % weight update
+    % w_ji
+    %ADD REGULARISATION HERE
+    for layer_num = number_of_layers:-1:1
+        if layer_num == 2
+            for i = 1:size(weights(2).a,1)
+                for j = 1:size(weights(2).a,2)
+                    weights(2).a(i,j) = weights(2).a(i,j) - ...
+                        l_rate*(deltas_last(j,1))*hidden_unit_outputs(i,1);%+ 0.001*weights(2).a(i,j)
+                end
+            end
+        else
+            for i = 1:size(weights(1).a,1)
+                for j = 1:size(weights(1).a,2)
+                    weights(1).a(i,j) = weights(1).a(i,j) - ...
+                        l_rate*(deltas_hidden(j,1))*rand_sample(i);% +0.001*weights(1).a(i,j)
+                end
+            end
+        end
+    end
+
+end
+
+function hidden_unit_out = sigmoid(x)
+    alpha = 4;
+    % can be applied to scalars and vectors
+    hidden_unit_out = 1./(1+exp(-alpha*x));
+end
+
+function diff_sigmoid = differentiate_sigmoid(x)
+    alpha = 4;
+    %refers to the sigmoid above
+    diff_sigmoid = sigmoid(x)*(1 - sigmoid(x));
+end
+
+function last_layer_out = softmax(input)
+    last_layer_out = exp(input)/(sum(exp(input)));
+end
+
+function delta_last_layer = delta_last(j) %grad_ji(j,i)
+    % j is the output, i are inputs
+    % times the difference by sigmoid (already computed)
+    delta_last_layer = last_unit_outputs(j,1) - ...
+        binary_label(j);% * unit_outputs(i,number_of_hidden_layers);
+end
+
+        
+function delta = delta_hidden(layer, j)
+    % layer is the layer number, j is the node number
+    % ADJUST ALPHA TO BE CONST
+    if layer == (number_of_layers - 1)
+        delta = differentiate_sigmoid(unit_outputs(j, layer)) * ...
+            (weights_layer_2(j,:)*delta_last(j));
+    else
+        %should be weights_layer(layer+1)
+        %INCLUDE COMPUTED DELTAS HERE
+        delta = differentiate_sigmoid(unit_outputs(j, layer)) * ...
+            (weights_layer_1(j,:)*delta_hidden(layer+1, j));
+    end
+end
+parameters.weights = weights;
+
+end
+
+    
+
+
+
